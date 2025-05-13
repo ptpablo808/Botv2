@@ -93,28 +93,27 @@ async def on_message(msg):
             num_warnings = increase_and_get_warnings(msg.author.id, msg.guild.id)
             if num_warnings >= 3:
                 await msg.channel.send(f"{msg.author.mention} has reached 3 warnings! 🚨 Please take appropriate action.")
-
             else:
                 await msg.channel.send(
-                    f"⚠️ Warning {num_warnings}/3 {msg.author.mention}. You will be at 3 warnings!"
+                    f"⚠️ Warning {num_warnings}/3 {msg.author.mention}. You will be banned after 3 warnings!"
                 )
             await msg.delete()
             return
 
     # --- Reactions ---
-reaction_responses = [
-    "Wow <:bravadosc:1371947415019589632>",
-    "😳",
-    "<:bravadosc:1371947415019589632>",
-    "{mention}!",
-    "{mention}? 👀"
-]
+    reaction_responses = [
+        "Wow <:bravadosc:1371947415019589632>",
+        "😳",
+        "<:bravadosc:1371947415019589632>",
+        "{mention}!",
+        "{mention}? 👀"
+    ]
 
-for term in reaction_words:
-    if term in msg_content:
-        response = random.choice(reaction_responses).format(mention=msg.author.mention)
-        await msg.channel.send(response)
-        break
+    for term in reaction_words:
+        if term in msg_content:
+            response = random.choice(reaction_responses).format(mention=msg.author.mention)
+            await msg.channel.send(response)
+            break
 
     await bot.process_commands(msg)
 
