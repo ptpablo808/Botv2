@@ -9,7 +9,7 @@ import sqlite3
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-profanity = ["nigger", "lexis", "nword"]
+profanity = ["fuck", "lexis", "nword"]
 
 
 def create_user_table():
