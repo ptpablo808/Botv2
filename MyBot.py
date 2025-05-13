@@ -91,8 +91,8 @@ async def on_message(msg):
         if term in msg_content:
             num_warnings = increase_and_get_warnings(msg.author.id, msg.guild.id)
             if num_warnings >= 3:
-                await msg.author.ban(reason="Exceeded 3 warnings for using inappropriate language.")
-                await msg.channel.send(f"{msg.author.mention} has been banned for repeated use of inappropriate language.")
+                await msg.channel.send(f"{msg.author.mention} has reached 3 warnings! 🚨 Please take appropriate action.")
+
             else:
                 await msg.channel.send(
                     f"⚠️ Warning {num_warnings}/3 {msg.author.mention}. You will be banned at 3 warnings!"
@@ -109,10 +109,10 @@ async def on_message(msg):
     await bot.process_commands(msg)
 
 # --- Slash command: greet ---
-@bot.tree.command(name="greet", description="Sends a greeting to the user")
-async def greet(interaction: discord.Interaction):
-    username = interaction.user.mention
-    await interaction.response.send_message(f"Yooo, {username}")
+@bot.tree.command(name="greet", description="Sends a greeting to the selected user")
+@app_commands.describe(user="The user you want to greet")
+async def greet(interaction: discord.Interaction, user: discord.User):
+    await interaction.response.send_message(f"Yooo, {user.mention} 👋")
 
 # --- Slash command: add reaction word ---
 @bot.tree.command(name="addreactionword", description="Adds a new reaction word")
