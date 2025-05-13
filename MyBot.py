@@ -120,4 +120,4 @@ async def greet(interaction: discord.Interaction):
 
 
 # Run the bot
-bot.run("DISCORD_TOKEN") # This code uses your bot's token to run the bot
+bot.run(TOKEN) # This code uses your bot's token to run the bot
