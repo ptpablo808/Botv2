@@ -15,6 +15,8 @@ DB_PATH = os.path.join(BASE_DIR, "user_warnings.db")
 # --- Word lists ---
 warn_words = ["fuck", "lexis", "nword", "nigger"]
 reaction_words = ["damn", "xd", "cringe"]
+trigger_words = ["cherax", "chrx"]  # Beispiel für Wörter, auf die der Bot reagiert
+emoji_to_react = "<:logo_s:1371984329504329789>"  # Emoji, das der Bot als Reaktion hinzufügen soll
 
 # --- Create warning table ---
 def create_user_table():
@@ -108,7 +110,13 @@ async def on_message(msg):
             await msg.delete()
             return
 
-    # --- Reactions ---
+    # --- Reactions for specific words --- (Trigger words)
+    for word in trigger_words:
+        if word in msg_content:
+            await msg.add_reaction(emoji_to_react)  # Fügt das Emoji hinzu
+            break  # Wenn das Wort gefunden wurde, wird die Schleife beendet
+
+    # --- General Reactions --- (Für die Liste `reaction_words`)
     reaction_responses = [
         "Wow <:bravadosc:1371947415019589632>",
         "😳",
@@ -123,6 +131,7 @@ async def on_message(msg):
             await msg.channel.send(response)
             break
 
+    # Ensure that commands are still processed
     await bot.process_commands(msg)
 
 # --- Slash command: greet ---
@@ -213,26 +222,6 @@ async def on_raw_reaction_remove(payload):
             print("Missing permissions to remove role.")
         except Exception as e:
             print(f"Error removing role: {e}")
-
-@bot.event
-async def on_message(msg):
-    if msg.author.id == bot.user.id:
-        return
-
-    msg_content = msg.content.lower()
-
-    # --- Reactions for specific words ---
-    trigger_words = ["cherax", "chrx"]  # Beispiel für Wörter, auf die der Bot reagiert
-    emoji_to_react = "<:logo_s:1371984329504329789>"  # Emoji, das der Bot als Reaktion hinzufügen soll
-
-    # Überprüfe, ob eines der Trigger-Wörter in der Nachricht enthalten ist
-    for word in trigger_words:
-        if word in msg_content:
-            await msg.add_reaction(emoji_to_react)  # Fügt das Emoji hinzu
-            break  # Wenn das Wort gefunden wurde, wird die Schleife beendet
-
-    await bot.process_commands(msg)
-
 
 # --- Run the bot ---
 bot.run(TOKEN)
