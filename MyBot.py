@@ -6,6 +6,7 @@ from discord import app_commands
 from dotenv import load_dotenv
 import sqlite3
 from keep_alive import keep_alive
+import random
 
 # --- Paths & Database ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -95,24 +96,41 @@ async def on_message(msg):
 
             else:
                 await msg.channel.send(
-                    f"⚠️ Warning {num_warnings}/3 {msg.author.mention}. You will be banned at 3 warnings!"
+                    f"⚠️ Warning {num_warnings}/3 {msg.author.mention}. You will be at 3 warnings!"
                 )
             await msg.delete()
             return
 
     # --- Reactions ---
-    for term in reaction_words:
-        if term in msg_content:
-            await msg.channel.send(f"{msg.author.mention} Wow, {term} :bravadosc:")
-            break
+reaction_responses = [
+    "Wow <:bravadosc:1371947415019589632>",
+    "😳",
+    "<:bravadosc:1371947415019589632>",
+    "{mention}!",
+    "{mention}? 👀"
+]
+
+for term in reaction_words:
+    if term in msg_content:
+        response = random.choice(reaction_responses).format(mention=msg.author.mention)
+        await msg.channel.send(response)
+        break
 
     await bot.process_commands(msg)
 
 # --- Slash command: greet ---
+greetings = [
+    "Hey {mention}, great to see you!",
+    "What’s up, {mention}? 👋",
+    "Yooo, {mention}!",
+    "{mention}, damn!"
+]
+
 @bot.tree.command(name="greet", description="Sends a greeting to the selected user")
 @app_commands.describe(user="The user you want to greet")
 async def greet(interaction: discord.Interaction, user: discord.User):
-    await interaction.response.send_message(f"Yooo, {user.mention} 👋")
+    greeting = random.choice(greetings).format(mention=user.mention)
+    await interaction.response.send_message(greeting)
 
 # --- Slash command: add reaction word ---
 @bot.tree.command(name="addreactionword", description="Adds a new reaction word")
