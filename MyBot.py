@@ -190,5 +190,49 @@ async def on_raw_reaction_add(payload):
         except Exception as e:
             print(f"Error adding role: {e}")
 
+# --- Remove role when member removes reaction ---
+@bot.event
+async def on_raw_reaction_remove(payload):
+    if payload.message_id == 1371278510391427143 and str(payload.emoji) == "✅":
+        guild = bot.get_guild(payload.guild_id)
+        if guild is None:
+            return
+
+        role = guild.get_role(1371194192847700179)
+        if role is None:
+            return
+
+        member = guild.get_member(payload.user_id)
+        if member is None or member.bot:
+            return
+
+        try:
+            await member.remove_roles(role, reason="Removed reaction from rules")
+            print(f"Removed role from {member.display_name}")
+        except discord.Forbidden:
+            print("Missing permissions to remove role.")
+        except Exception as e:
+            print(f"Error removing role: {e}")
+
+@bot.event
+async def on_message(msg):
+    if msg.author.id == bot.user.id:
+        return
+
+    msg_content = msg.content.lower()
+
+    # --- Reactions for specific words ---
+    trigger_words = ["cherax", "chrx"]  # Beispiel für Wörter, auf die der Bot reagiert
+    emoji_to_react = "<:logo_s:1371984329504329789>"  # Emoji, das der Bot als Reaktion hinzufügen soll
+
+    # Überprüfe, ob eines der Trigger-Wörter in der Nachricht enthalten ist
+    for word in trigger_words:
+        if word in msg_content:
+            await msg.add_reaction(emoji_to_react)  # Fügt das Emoji hinzu
+            break  # Wenn das Wort gefunden wurde, wird die Schleife beendet
+
+    await bot.process_commands(msg)
+
+
 # --- Run the bot ---
 bot.run(TOKEN)
