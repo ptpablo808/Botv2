@@ -80,6 +80,13 @@ async def on_ready():
     await bot.tree.sync()
     print(f"{bot.user} is online!")
 
+    # --- Add reaction to rule message when bot is ready ---
+    channel = bot.get_channel(1371194196026720349)  # Ersetze mit der Channel-ID, wo die Regel-Nachricht ist
+    message = await channel.fetch_message(1371278510391427143)  # Regel-Nachricht mit der angegebenen ID
+    await message.add_reaction("✅")  # Füge das ✅-Emoji hinzu
+
+    print(f"{bot.user} has added a reaction to the rules message.")
+
 # --- Handle messages ---
 @bot.event
 async def on_message(msg):
