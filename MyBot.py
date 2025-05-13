@@ -35,7 +35,7 @@ def increase_and_get_warnings(user_id: int, guild_id: int):
     connection = sqlite3.connect(f"{BASE_DIR}\\user_warnings.db")
     cursor = connection.cursor()
 
-    cursor.executive("""
+    cursor.execute("""
         SELECT warning_count
         FROM users_per_guild
         WHERE (user_id = ?) AND (guild_id = ?);
@@ -45,7 +45,7 @@ def increase_and_get_warnings(user_id: int, guild_id: int):
 
     if result == None:
         cursor.execute("""
-            INSERT INTRO users_per_guild (user_id, warning_count, guild_id)
+            INSERT INTO users_per_guild (user_id, warning_count, guild_id)
             VALUES (?, 1, ?);
         """, (user_id, guild_id))
         
