@@ -1,123 +1,129 @@
 # Importing libraries and modules
-import os # Allows interaction with the operating system
-import discord # Provides methods to interact with the Discord API
-from discord.ext import commands # Extends discord.py and allows creation and handling of commands
-from discord import app_commands # Allows parameters to be used for slash-commands
-from dotenv import load_dotenv # Allows the use of environment variables (this is what we'll use to manage our
-                               # tokens and keys)
+import os
+import discord
+from discord.ext import commands
+from discord import app_commands
+from dotenv import load_dotenv
 import sqlite3
+from keep_alive import keep_alive
 
+# --- Paths & Database ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "user_warnings.db")
 
-profanity = ["fuck", "lexis", "nword"]
+# --- Word lists ---
+warn_words = ["fuck", "lexis", "nword", "nigger"]
+reaction_words = ["damn", "xd", "cringe"]
 
-
+# --- Create warning table ---
 def create_user_table():
-    connection = sqlite3.connect(f"{BASE_DIR}\\user_warnings.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
-
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS "users_per_guild" (
-            "user_id"   INTEGER,
-            "warning_count" INTEGER,
-            "guild_id"  INTEGER,
-            PRIMARY KEY("user_id","guild_id")
+        CREATE TABLE IF NOT EXISTS users_per_guild (
+            user_id INTEGER,
+            warning_count INTEGER,
+            guild_id INTEGER,
+            PRIMARY KEY(user_id, guild_id)
         )
     """)
-
     connection.commit()
     connection.close()
 
-
 create_user_table()
 
+# --- Increase and fetch warning count ---
 def increase_and_get_warnings(user_id: int, guild_id: int):
-    connection = sqlite3.connect(f"{BASE_DIR}\\user_warnings.db")
+    connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
-
     cursor.execute("""
-        SELECT warning_count
-        FROM users_per_guild
-        WHERE (user_id = ?) AND (guild_id = ?);
+        SELECT warning_count FROM users_per_guild WHERE user_id = ? AND guild_id = ?
     """, (user_id, guild_id))
 
     result = cursor.fetchone()
 
-    if result == None:
+    if result is None:
         cursor.execute("""
             INSERT INTO users_per_guild (user_id, warning_count, guild_id)
-            VALUES (?, 1, ?);
+            VALUES (?, 1, ?)
         """, (user_id, guild_id))
-        
         connection.commit()
         connection.close()
-
         return 1
-    
-    cursor.execute("""
-        UPDATE users_per_guild
-        SET warning_count = ?
-        WHERE (user_id = ?) AND (guild_id = ?);
-    """, (result[0] + 1, user_id, guild_id))
+    else:
+        new_count = result[0] + 1
+        cursor.execute("""
+            UPDATE users_per_guild SET warning_count = ? WHERE user_id = ? AND guild_id = ?
+        """, (new_count, user_id, guild_id))
+        connection.commit()
+        connection.close()
+        return new_count
 
-    connection.commit()
-    connection.close()
+# --- Load environment variables ---
+load_dotenv()
+TOKEN = os.getenv("DISCORD_TOKEN")
 
-    return result [0] + 1
+# --- Keep bot alive on Render ---
+keep_alive()
 
-from keep_alive import keep_alive # NEW
+# --- Discord Bot Setup ---
+intents = discord.Intents.default()
+intents.message_content = True
 
-load_dotenv() # Loads and reads the .env file
-TOKEN = os.getenv("DISCORD_TOKEN") # Reads and stores the Discord Token from the .env file
+bot = commands.Bot(command_prefix="!", intents=intents)
 
-keep_alive() # NEW
-
-# Setup of intents. Intents are permissions the bot has on the server
-intents = discord.Intents.default() # Intents can be set through this object
-intents.message_content = True  # This intent allows you to read and handle messages from users
-
-# Bot setup
-bot = commands.Bot(command_prefix="!", intents=intents) # Creates a bot and uses the intents created earlier
-
-# Bot ready-up code
-@bot.event # Decorator
+# --- Sync slash commands on bot ready ---
+@bot.event
 async def on_ready():
-    await bot.tree.sync() # Syncs the commands with Discord so that they can be displayed
-    print(f"{bot.user} is online!") # Appears when the bot comes online
+    await bot.tree.sync()
+    print(f"{bot.user} is online!")
 
+# --- Handle messages ---
 @bot.event
 async def on_message(msg):
-    if msg.author.id != bot.user.id:
-        for term in profanity:
-            if term.lower() in msg.content.lower():
-                num_warnings = increase_and_get_warnings(msg.author.id, msg.guild.id)
+    if msg.author.id == bot.user.id:
+        return
 
-                if num_warnings >= 3:
-                    await msg.author.ban(reason="Exceeded 3 strikes for using profanity.")
-                    await msg.channel.send(f"{msg.author.mention} has been banned for repeated profanity.")
-                else:
-                    await msg.channel.send(
-                        f"Warning {num_warnings}/3 {msg.author.mention}. If you reach 3 warnings, you will be banned"
-                    )
+    msg_content = msg.content.lower()
 
-                    await msg.delete()
+    # --- Warnings ---
+    for term in warn_words:
+        if term in msg_content:
+            num_warnings = increase_and_get_warnings(msg.author.id, msg.guild.id)
+            if num_warnings >= 3:
+                await msg.author.ban(reason="Exceeded 3 warnings for using inappropriate language.")
+                await msg.channel.send(f"{msg.author.mention} has been banned for repeated use of inappropriate language.")
+            else:
+                await msg.channel.send(
+                    f"⚠️ Warning {num_warnings}/3 {msg.author.mention}. You will be banned at 3 warnings!"
+                )
+            await msg.delete()
+            return
 
-                break
+    # --- Reactions ---
+    for term in reaction_words:
+        if term in msg_content:
+            await msg.channel.send(f"{msg.author.mention} Wow, {term} :bravadosc:")
+            break
 
     await bot.process_commands(msg)
 
-
-@bot.event
-async def on_message(msg):
-    if msg.author.id != bot.user.id:
-        await msg.channel.send(f"Wow, {msg.author.mention}")
-
+# --- Slash command: greet ---
 @bot.tree.command(name="greet", description="Sends a greeting to the user")
 async def greet(interaction: discord.Interaction):
     username = interaction.user.mention
     await interaction.response.send_message(f"Yooo, {username}")
 
+# --- Slash command: add reaction word ---
+@bot.tree.command(name="addreactionword", description="Adds a new reaction word")
+@app_commands.describe(word="The word that should trigger a reaction")
+async def addreactionword(interaction: discord.Interaction, word: str):
+    word = word.lower()
+    if word in reaction_words:
+        await interaction.response.send_message(f"`{word}` is already in the reaction list.", ephemeral=True)
+    else:
+        reaction_words.append(word)
+        await interaction.response.send_message(f"`{word}` has been added to the reaction list ✅", ephemeral=True)
 
-
-# Run the bot
-bot.run(TOKEN) # This code uses your bot's token to run the bot
+# --- Run the bot ---
+bot.run(TOKEN)
