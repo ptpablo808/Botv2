@@ -70,6 +70,7 @@ keep_alive()
 # --- Discord Bot Setup ---
 intents = discord.Intents.default()
 intents.message_content = True
+intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
@@ -95,7 +96,7 @@ async def on_message(msg):
                 await msg.channel.send(f"{msg.author.mention} has reached 3 warnings! 🚨 Please take appropriate action.")
             else:
                 await msg.channel.send(
-                    f"⚠️ Warning {num_warnings}/3 {msg.author.mention}. You will be banned after 3 warnings!"
+                    f"⚠️ Warning {num_warnings}/3 {msg.author.mention}. You will be at 3 warnings!"
                 )
             await msg.delete()
             return
@@ -106,7 +107,7 @@ async def on_message(msg):
         "😳",
         "<:bravadosc:1371947415019589632>",
         "{mention}!",
-        "{mention}? 👀"
+        "👀"
     ]
 
     for term in reaction_words:
@@ -141,6 +142,46 @@ async def addreactionword(interaction: discord.Interaction, word: str):
     else:
         reaction_words.append(word)
         await interaction.response.send_message(f"`{word}` has been added to the reaction list ✅", ephemeral=True)
+
+# --- Slash command: add check reaction to rules message ---
+@bot.tree.command(name="addcheckreaction", description="Adds ✅ reaction to the rules message")
+async def add_check_reaction(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    try:
+        channel = interaction.channel
+        message = await channel.fetch_message(1371278510391427143)
+        await message.add_reaction("\u2705")
+        await interaction.followup.send("\u2705 Reaction added to the message!", ephemeral=True)
+    except discord.NotFound:
+        await interaction.followup.send("❌ Message not found. Check the ID.", ephemeral=True)
+    except discord.Forbidden:
+        await interaction.followup.send("❌ I don't have permission to react to that message.", ephemeral=True)
+    except Exception as e:
+        await interaction.followup.send(f"❌ Error: {e}", ephemeral=True)
+
+# --- Give role when member reacts to rules ---
+@bot.event
+async def on_raw_reaction_add(payload):
+    if payload.message_id == 1371278510391427143 and str(payload.emoji) == "✅":
+        guild = bot.get_guild(payload.guild_id)
+        if guild is None:
+            return
+
+        role = guild.get_role(1371194192847700179)
+        if role is None:
+            return
+
+        member = guild.get_member(payload.user_id)
+        if member is None or member.bot:
+            return
+
+        try:
+            await member.add_roles(role, reason="Accepted rules")
+            print(f"Gave role to {member.display_name}")
+        except discord.Forbidden:
+            print("Missing permissions to add role.")
+        except Exception as e:
+            print(f"Error adding role: {e}")
 
 # --- Run the bot ---
 bot.run(TOKEN)
