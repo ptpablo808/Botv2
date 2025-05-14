@@ -100,6 +100,15 @@ def get_guild_settings(guild_id):
     connection.close()
     return row
 
+# --- Update rules message ---
+def update_rules_text(guild_id, message_id, new_text):
+    connection = sqlite3.connect(DB_PATH)
+    cursor = connection.cursor()
+    cursor.execute("SELECT rules_message_id FROM guild_settings WHERE guild_id = ?", (guild_id,))
+    result = cursor.fetchone()
+    connection.close()
+    return result and result[0] == message_id
+
 # --- Sync slash commands on bot ready ---
 @bot.event
 async def on_ready():
@@ -171,11 +180,11 @@ async def addreactionword(interaction: discord.Interaction, word: str):
         await interaction.response.send_message(f"`{word}` has been added to the reaction list ✅", ephemeral=True)
 
 # --- Slash command: setup ---
-@bot.tree.command(name="setup", description="Set the rules message and role for this server")
-@app_commands.describe(role="The role to give when reacted", text="Optional custom rule message text")
-async def setup(interaction: discord.Interaction, role: discord.Role, text: str = "📜 **Regeln**\nBitte reagiere mit ✅, um den Server zu betreten."):
+@bot.tree.command(name="setup", description="Post a placeholder rules message and bind a role")
+@app_commands.describe(role="The role to give when reacted")
+async def setup(interaction: discord.Interaction, role: discord.Role):
     await interaction.response.defer(ephemeral=True)
-    msg = await interaction.channel.send(text)
+    msg = await interaction.channel.send("📜 **Regeln folgen...**")
     await msg.add_reaction("✅")
 
     connection = sqlite3.connect(DB_PATH)
@@ -187,7 +196,28 @@ async def setup(interaction: discord.Interaction, role: discord.Role, text: str 
     connection.commit()
     connection.close()
 
-    await interaction.followup.send("✅ Setup abgeschlossen! Nachricht wurde gepostet und gespeichert.", ephemeral=True)
+    await interaction.followup.send("✅ Setup abgeschlossen! Nachricht wurde gepostet. Verwende nun `/setrules`, um den Text zu ändern.", ephemeral=True)
+
+# --- Slash command: setrules ---
+@bot.tree.command(name="setrules", description="Aktualisiert den Inhalt der Regel-Nachricht")
+@app_commands.describe(text="Der neue Text für die Regel-Nachricht")
+async def setrules(interaction: discord.Interaction, text: str):
+    settings = get_guild_settings(interaction.guild.id)
+    if not settings:
+        await interaction.response.send_message("⚠️ Kein Setup für diesen Server gefunden. Bitte zuerst `/setup` ausführen.", ephemeral=True)
+        return
+
+    channel = interaction.channel
+    try:
+        message = await channel.fetch_message(settings[0])
+        await message.edit(content=text)
+        await interaction.response.send_message("✅ Regeltext erfolgreich aktualisiert.", ephemeral=True)
+    except discord.NotFound:
+        await interaction.response.send_message("❌ Nachricht nicht gefunden. Stelle sicher, dass der Befehl im richtigen Kanal verwendet wird.", ephemeral=True)
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ Ich habe keine Berechtigung, um die Nachricht zu bearbeiten.", ephemeral=True)
+    except Exception as e:
+        await interaction.response.send_message(f"❌ Fehler: {e}", ephemeral=True)
 
 # --- Slash command: viewsetup ---
 @bot.tree.command(name="viewsetup", description="Zeigt das aktuelle Setup für diesen Server")
