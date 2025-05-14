@@ -374,8 +374,7 @@ async def announce(interaction: discord.Interaction, title: str, description: st
 
     embed = discord.Embed(
     title=title,
-    description=description.replace("\n", "
-"),
+    description=description.replace("\\n", "\n"),
     color=embed_color
 ),
         color=embed_color
