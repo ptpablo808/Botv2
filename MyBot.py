@@ -207,11 +207,13 @@ async def setrules(interaction: discord.Interaction, text: str):
         await interaction.response.send_message("⚠️ Kein Setup für diesen Server gefunden. Bitte zuerst `/setup` ausführen.", ephemeral=True)
         return
 
+    formatted_text = text.replace("\n", "
+")
     channel = interaction.channel
     try:
         message = await channel.fetch_message(settings[0])
-        await message.edit(content=text)
-        await interaction.response.send_message("✅ Regeltext erfolgreich aktualisiert.", ephemeral=True)
+        await message.edit(content=formatted_text)
+        await interaction.response.send_message("✅ Rules Updated.", ephemeral=True)
     except discord.NotFound:
         await interaction.response.send_message("❌ Nachricht nicht gefunden. Stelle sicher, dass der Befehl im richtigen Kanal verwendet wird.", ephemeral=True)
     except discord.Forbidden:
@@ -235,10 +237,10 @@ async def viewsetup(interaction: discord.Interaction):
 # --- Slash command: generate image ---
 @bot.tree.command(name="generate", description="Erstellt ein Bild mit Text")
 @app_commands.describe(
-    text="Dein Text",
-    bg="Farbname oder Hintergrundbild (z. B. 'bg_1.png')",
-    font="Schriftname: celsius_flower oder high_speed",
-    effect="Effekt: z. B. glow"
+    text="Text",
+    bg="Background (z. B. 'bg_1.png')",
+    font="Font: celsius_flower oder high_speed",
+    effect="Effect: z. B. glow"
 )
 async def generate(
     interaction: discord.Interaction,
