@@ -19,7 +19,7 @@ reaction_words = ["damn", "xd", "cringe"]
 trigger_words = ["cherax", "chrx"]  # Beispiel für Wörter, auf die der Bot reagiert
 emoji_to_react = "<:logo_s:1371984329504329789>"  # Emoji, das der Bot als Reaktion hinzufügen soll
 
-# --- Create warning table ---
+# --- Create tables ---
 def create_user_table():
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
@@ -34,7 +34,21 @@ def create_user_table():
     connection.commit()
     connection.close()
 
+def create_setup_table():
+    connection = sqlite3.connect(DB_PATH)
+    cursor = connection.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS guild_settings (
+            guild_id INTEGER PRIMARY KEY,
+            rules_message_id INTEGER,
+            role_id INTEGER
+        )
+    """)
+    connection.commit()
+    connection.close()
+
 create_user_table()
+create_setup_table()
 
 # --- Increase and fetch warning count ---
 def increase_and_get_warnings(user_id: int, guild_id: int):
@@ -77,17 +91,20 @@ intents.members = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# --- Utility: get settings from DB ---
+def get_guild_settings(guild_id):
+    connection = sqlite3.connect(DB_PATH)
+    cursor = connection.cursor()
+    cursor.execute("SELECT rules_message_id, role_id FROM guild_settings WHERE guild_id = ?", (guild_id,))
+    row = cursor.fetchone()
+    connection.close()
+    return row
+
 # --- Sync slash commands on bot ready ---
 @bot.event
 async def on_ready():
     await bot.tree.sync()
     print(f"{bot.user} is online!")
-
-    # --- Add reaction to rule message when bot is ready ---
-    channel = bot.get_channel(1371194196026720349)  # Channel-ID
-    message = await channel.fetch_message(1371278510391427143)
-    await message.add_reaction("✅")
-    print(f"{bot.user} has added a reaction to the rules message.")
 
 # --- Handle messages ---
 @bot.event
@@ -153,21 +170,19 @@ async def addreactionword(interaction: discord.Interaction, word: str):
         reaction_words.append(word)
         await interaction.response.send_message(f"`{word}` has been added to the reaction list ✅", ephemeral=True)
 
-# --- Slash command: add check reaction to rules message ---
-@bot.tree.command(name="addcheckreaction", description="Adds ✅ reaction to the rules message")
-async def add_check_reaction(interaction: discord.Interaction):
-    await interaction.response.defer(ephemeral=True)
-    try:
-        channel = interaction.channel
-        message = await channel.fetch_message(1371278510391427143)
-        await message.add_reaction("\u2705")
-        await interaction.followup.send("\u2705 Reaction added to the message!", ephemeral=True)
-    except discord.NotFound:
-        await interaction.followup.send("❌ Message not found. Check the ID.", ephemeral=True)
-    except discord.Forbidden:
-        await interaction.followup.send("❌ I don't have permission to react to that message.", ephemeral=True)
-    except Exception as e:
-        await interaction.followup.send(f"❌ Error: {e}", ephemeral=True)
+# --- Slash command: setup ---
+@bot.tree.command(name="setup", description="Set the rules message ID and role for this server")
+@app_commands.describe(message_id="The ID of the message to track", role="The role to give when reacted")
+async def setup(interaction: discord.Interaction, message_id: str, role: discord.Role):
+    connection = sqlite3.connect(DB_PATH)
+    cursor = connection.cursor()
+    cursor.execute("""
+        INSERT OR REPLACE INTO guild_settings (guild_id, rules_message_id, role_id)
+        VALUES (?, ?, ?)
+    """, (interaction.guild.id, int(message_id), role.id))
+    connection.commit()
+    connection.close()
+    await interaction.response.send_message("✅ Setup gespeichert!", ephemeral=True)
 
 # --- Slash command: generate image ---
 @bot.tree.command(name="generate", description="Erstellt ein Bild mit Text")
@@ -191,48 +206,42 @@ async def generate(
 # --- Give role when member reacts to rules ---
 @bot.event
 async def on_raw_reaction_add(payload):
-    if payload.message_id == 1371278510391427143 and str(payload.emoji) == "✅":
-        guild = bot.get_guild(payload.guild_id)
-        if guild is None:
-            return
+    settings = get_guild_settings(payload.guild_id)
+    if not settings:
+        return
+    rules_msg_id, role_id = settings
+    if payload.message_id != rules_msg_id or str(payload.emoji) != "✅":
+        return
 
-        role = guild.get_role(1371194192847700179)
-        if role is None:
-            return
+    guild = bot.get_guild(payload.guild_id)
+    role = guild.get_role(role_id)
+    member = guild.get_member(payload.user_id)
 
-        member = guild.get_member(payload.user_id)
-        if member is None or member.bot:
-            return
-
+    if guild and role and member and not member.bot:
         try:
             await member.add_roles(role, reason="Accepted rules")
             print(f"Gave role to {member.display_name}")
-        except discord.Forbidden:
-            print("Missing permissions to add role.")
         except Exception as e:
-            print(f"Error adding role: {e}")
+            print(f"Error: {e}")
 
 # --- Remove role when member removes reaction ---
 @bot.event
 async def on_raw_reaction_remove(payload):
-    if payload.message_id == 1371278510391427143 and str(payload.emoji) == "✅":
-        guild = bot.get_guild(payload.guild_id)
-        if guild is None:
-            return
+    settings = get_guild_settings(payload.guild_id)
+    if not settings:
+        return
+    rules_msg_id, role_id = settings
+    if payload.message_id != rules_msg_id or str(payload.emoji) != "✅":
+        return
 
-        role = guild.get_role(1371194192847700179)
-        if role is None:
-            return
+    guild = bot.get_guild(payload.guild_id)
+    role = guild.get_role(role_id)
+    member = guild.get_member(payload.user_id)
 
-        member = guild.get_member(payload.user_id)
-        if member is None or member.bot:
-            return
-
+    if guild and role and member and not member.bot:
         try:
             await member.remove_roles(role, reason="Removed reaction from rules")
             print(f"Removed role from {member.display_name}")
-        except discord.Forbidden:
-            print("Missing permissions to remove role.")
         except Exception as e:
             print(f"Error removing role: {e}")
 
