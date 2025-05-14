@@ -80,6 +80,9 @@ def create_reactionword_table():
 
 create_user_table()
 create_setup_table()
+create_reactionword_table()
+create_warnword_table()
+
 
 # --- Increase and fetch warning count ---
 def increase_and_get_warnings(user_id: int, guild_id: int):
