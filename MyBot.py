@@ -378,7 +378,7 @@ embed = discord.Embed(
         description=description.replace("\\n", "\n"),
         color=embed_color
     )
-    embed.set_footer(text=f"Announcement by {interaction.user.display_name}", icon_url=interaction.user.avatar.url)
+embed.set_footer(text=f"Announcement by {interaction.user.display_name}", icon_url=interaction.user.avatar.url)
 
     await interaction.response.send_message(embed=embed, ephemeral=False)
     await interaction.followup.send("✅ Announcement sent!", ephemeral=True)
