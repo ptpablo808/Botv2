@@ -207,8 +207,8 @@ async def setrules(interaction: discord.Interaction, text: str):
         await interaction.response.send_message("⚠️ Kein Setup für diesen Server gefunden. Bitte zuerst `/setup` ausführen.", ephemeral=True)
         return
 
-    formatted_text = text.replace("\n", "
-")
+formatted_text = text.replace("\\n", "\n")
+
     channel = interaction.channel
     try:
         message = await channel.fetch_message(settings[0])
