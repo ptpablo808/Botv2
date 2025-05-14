@@ -298,8 +298,7 @@ async def removereactionword(interaction: discord.Interaction, word: str):
 @bot.tree.command(name="setup", description="Post a placeholder rules message and bind a role")
 @app_commands.describe(role="The role to give when reacted")
 async def setup(interaction: discord.Interaction, role: discord.Role):
-    await interaction.response.defer(ephemeral=True)
-    msg = await interaction.channel.send("📜 **Rules will follow...**")
+    msg = await interaction.channel.send("📜 **Waiting for Rules...**")
     await msg.add_reaction("✅")
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
@@ -309,7 +308,7 @@ async def setup(interaction: discord.Interaction, role: discord.Role):
     """, (interaction.guild.id, msg.id, role.id))
     connection.commit()
     connection.close()
-    await interaction.followup.send("✅ Setup complete! Placeholder message posted. Use `/setrules` to edit the content.", ephemeral=True)
+    await interaction.response.send_message("✅ Setup complete! Placeholder message posted. Use `/setrules` to edit the content.", ephemeral=True)
 
 # --- Slash command: setrules ---
 @bot.tree.command(name="setrules", description="Updates the content of the rules message")
@@ -353,18 +352,20 @@ async def viewsetup(interaction: discord.Interaction):
     color="Hex color code (e.g. #ff0000 for red)"
 )
 async def announce(interaction: discord.Interaction, title: str, description: str, color: str = "#00ff00"):
-    await interaction.response.defer(ephemeral=True)
     try:
         embed_color = discord.Color(int(color.strip("#"), 16))
     except ValueError:
         embed_color = discord.Color.green()
+
     embed = discord.Embed(
         title=title,
-        description=description.replace("\\n", "\n"),
+        description=description.replace("\n", "
+"),
         color=embed_color
     )
     embed.set_footer(text=f"Announcement by {interaction.user.display_name}", icon_url=interaction.user.avatar.url)
-    await interaction.channel.send(embed=embed)
+
+    await interaction.response.send_message(embed=embed, ephemeral=False)
     await interaction.followup.send("✅ Announcement sent!", ephemeral=True)
 
 # --- Slash command: generate image ---
