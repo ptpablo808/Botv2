@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import sqlite3
 from keep_alive import keep_alive
 import random
+from image_generator import create_image  # NEU
 
 # --- Paths & Database ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -83,10 +84,9 @@ async def on_ready():
     print(f"{bot.user} is online!")
 
     # --- Add reaction to rule message when bot is ready ---
-    channel = bot.get_channel(1371194196026720349)  # Ersetze mit der Channel-ID, wo die Regel-Nachricht ist
-    message = await channel.fetch_message(1371278510391427143)  # Regel-Nachricht mit der angegebenen ID
-    await message.add_reaction("✅")  # Füge das ✅-Emoji hinzu
-
+    channel = bot.get_channel(1371194196026720349)  # Channel-ID
+    message = await channel.fetch_message(1371278510391427143)
+    await message.add_reaction("✅")
     print(f"{bot.user} has added a reaction to the rules message.")
 
 # --- Handle messages ---
@@ -97,26 +97,21 @@ async def on_message(msg):
 
     msg_content = msg.content.lower()
 
-    # --- Warnings ---
     for term in warn_words:
         if term in msg_content:
             num_warnings = increase_and_get_warnings(msg.author.id, msg.guild.id)
             if num_warnings >= 3:
                 await msg.channel.send(f"{msg.author.mention} has reached 3 warnings! 🚨 Please take appropriate action.")
             else:
-                await msg.channel.send(
-                    f"⚠️ Warning {num_warnings}/3 {msg.author.mention}. You will be at 3 warnings!"
-                )
+                await msg.channel.send(f"⚠️ Warning {num_warnings}/3 {msg.author.mention}. You will be at 3 warnings!")
             await msg.delete()
             return
 
-    # --- Reactions for specific words --- (Trigger words)
     for word in trigger_words:
         if word in msg_content:
-            await msg.add_reaction(emoji_to_react)  # Fügt das Emoji hinzu
-            break  # Wenn das Wort gefunden wurde, wird die Schleife beendet
+            await msg.add_reaction(emoji_to_react)
+            break
 
-    # --- General Reactions --- (Für die Liste `reaction_words`)
     reaction_responses = [
         "Wow <:bravadosc:1371947415019589632>",
         "😳",
@@ -131,7 +126,6 @@ async def on_message(msg):
             await msg.channel.send(response)
             break
 
-    # Ensure that commands are still processed
     await bot.process_commands(msg)
 
 # --- Slash command: greet ---
@@ -174,6 +168,25 @@ async def add_check_reaction(interaction: discord.Interaction):
         await interaction.followup.send("❌ I don't have permission to react to that message.", ephemeral=True)
     except Exception as e:
         await interaction.followup.send(f"❌ Error: {e}", ephemeral=True)
+
+# --- Slash command: generate image ---
+@bot.tree.command(name="generate", description="Erstellt ein Bild mit Text")
+@app_commands.describe(
+    text="Dein Text",
+    bg="Farbname oder Hintergrundbild (z. B. 'bg_1.png')",
+    font="Schriftname: celsius_flower oder high_speed",
+    effect="Effekt: z. B. glow"
+)
+async def generate(
+    interaction: discord.Interaction,
+    text: str,
+    bg: str = "white",
+    font: str = "arial",
+    effect: str = "none"
+):
+    await interaction.response.defer()
+    image_path = create_image(text, bg, font, effect)
+    await interaction.followup.send(file=discord.File(image_path))
 
 # --- Give role when member reacts to rules ---
 @bot.event
