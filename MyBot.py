@@ -207,19 +207,20 @@ async def setrules(interaction: discord.Interaction, text: str):
         await interaction.response.send_message("⚠️ Kein Setup für diesen Server gefunden. Bitte zuerst `/setup` ausführen.", ephemeral=True)
         return
 
-    formatted_text = text.replace("\n", "
-")
+    formatted_text = text.replace("\\n", "\n")  # Fix hier!
+
     channel = interaction.channel
     try:
         message = await channel.fetch_message(settings[0])
         await message.edit(content=formatted_text)
-        await interaction.response.send_message("✅ Rules Updated.", ephemeral=True)
+        await interaction.response.send_message("✅ Regeltext erfolgreich aktualisiert.", ephemeral=True)
     except discord.NotFound:
         await interaction.response.send_message("❌ Nachricht nicht gefunden. Stelle sicher, dass der Befehl im richtigen Kanal verwendet wird.", ephemeral=True)
     except discord.Forbidden:
         await interaction.response.send_message("❌ Ich habe keine Berechtigung, um die Nachricht zu bearbeiten.", ephemeral=True)
     except Exception as e:
         await interaction.response.send_message(f"❌ Fehler: {e}", ephemeral=True)
+
 
 # --- Slash command: viewsetup ---
 @bot.tree.command(name="viewsetup", description="Zeigt das aktuelle Setup für diesen Server")
