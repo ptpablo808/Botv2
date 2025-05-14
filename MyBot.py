@@ -171,18 +171,36 @@ async def addreactionword(interaction: discord.Interaction, word: str):
         await interaction.response.send_message(f"`{word}` has been added to the reaction list ✅", ephemeral=True)
 
 # --- Slash command: setup ---
-@bot.tree.command(name="setup", description="Set the rules message ID and role for this server")
-@app_commands.describe(message_id="The ID of the message to track", role="The role to give when reacted")
-async def setup(interaction: discord.Interaction, message_id: str, role: discord.Role):
+@bot.tree.command(name="setup", description="Set the rules message and role for this server")
+@app_commands.describe(role="The role to give when reacted", text="Optional custom rule message text")
+async def setup(interaction: discord.Interaction, role: discord.Role, text: str = "📜 **Regeln**\nBitte reagiere mit ✅, um den Server zu betreten."):
+    await interaction.response.defer(ephemeral=True)
+    msg = await interaction.channel.send(text)
+    await msg.add_reaction("✅")
+
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
     cursor.execute("""
         INSERT OR REPLACE INTO guild_settings (guild_id, rules_message_id, role_id)
         VALUES (?, ?, ?)
-    """, (interaction.guild.id, int(message_id), role.id))
+    """, (interaction.guild.id, msg.id, role.id))
     connection.commit()
     connection.close()
-    await interaction.response.send_message("✅ Setup gespeichert!", ephemeral=True)
+
+    await interaction.followup.send("✅ Setup abgeschlossen! Nachricht wurde gepostet und gespeichert.", ephemeral=True)
+
+# --- Slash command: viewsetup ---
+@bot.tree.command(name="viewsetup", description="Zeigt das aktuelle Setup für diesen Server")
+async def viewsetup(interaction: discord.Interaction):
+    settings = get_guild_settings(interaction.guild.id)
+    if not settings:
+        await interaction.response.send_message("ℹ️ Für diesen Server wurde noch kein Setup gespeichert.", ephemeral=True)
+    else:
+        msg_id, role_id = settings
+        await interaction.response.send_message(
+            f"📌 **Aktuelles Setup:**\n• Nachricht ID: `{msg_id}`\n• Rolle ID: `{role_id}`",
+            ephemeral=True
+        )
 
 # --- Slash command: generate image ---
 @bot.tree.command(name="generate", description="Erstellt ein Bild mit Text")
