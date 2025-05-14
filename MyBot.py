@@ -347,19 +347,35 @@ async def viewsetup(interaction: discord.Interaction):
 # --- Slash command: announce ---
 @bot.tree.command(name="announce", description="Sends an embedded announcement")
 @app_commands.describe(
-    title="Title of the announcement",
-    description="Content of the announcement",
-    color="Hex color code (e.g. #ff0000 for red)"
+    title="Title of announcement",
+    description="Content of announcement",
+    color="Color name or HEX code"
 )
 async def announce(interaction: discord.Interaction, title: str, description: str, color: str = "#00ff00"):
+    predefined_colors = {
+    "red": 0xFF0000,
+    "blue": 0x3498DB,
+    "green": 0x2ECC71,
+    "yellow": 0xF1C40F,
+    "orange": 0xE67E22,
+    "purple": 0x9B59B6,
+    "gray": 0x95A5A6,
+    "default": 7800ff
+}
+
+hex_color = predefined_colors.get(color.lower(), None)
+
+if hex_color is None:
     try:
-        embed_color = discord.Color(int(color.strip("#"), 16))
+        hex_color = int(color.strip("#"), 16)
     except ValueError:
-        embed_color = discord.Color.green()
+        hex_color = predefined_colors["default"]
+
+embed_color = discord.Color(hex_color)
 
     embed = discord.Embed(
         title=title,
-        description=description.replace("\\n", "\n"),
+        description=description.replace("\n", "*n"),
         color=embed_color
     )
     embed.set_footer(text=f"Announcement by {interaction.user.display_name}", icon_url=interaction.user.avatar.url)
