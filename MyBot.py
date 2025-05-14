@@ -44,9 +44,19 @@ def create_user_table():
     connection.commit()
     connection.close()
 
-def create_setup_table()
-create_reactionword_table()
-create_warnword_table()
+def create_setup_table():
+    connection = sqlite3.connect(DB_PATH)
+    cursor = connection.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS guild_settings (
+            guild_id INTEGER PRIMARY KEY,
+            rules_message_id INTEGER,
+            role_id INTEGER
+        )
+    """)
+    connection.commit()
+    connection.close()
+
 def create_reactionword_table():
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
@@ -56,8 +66,7 @@ def create_reactionword_table():
         )
     """)
     connection.commit()
-    connection.close():
-    connection = sqlite3.connect(DB_PATH)
+    connection.close()
     cursor = connection.cursor()
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS guild_settings (
