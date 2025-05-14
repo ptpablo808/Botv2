@@ -196,7 +196,7 @@ async def setup(interaction: discord.Interaction, role: discord.Role):
     connection.commit()
     connection.close()
 
-    await interaction.followup.send("✅ Setup abgeschlossen! Nachricht wurde gepostet. Verwende nun `/setrules`, um den Text zu ändern.", ephemeral=True)
+    await interaction.followup.send("✅ Setup complete! Placeholder message posted. Use `/setrules` to edit the content.", ephemeral=True). Verwende nun `/setrules`, um den Text zu ändern.", ephemeral=True)
 
 # --- Slash command: setrules ---
 @bot.tree.command(name="setrules", description="Aktualisiert den Inhalt der Regel-Nachricht")
@@ -204,32 +204,35 @@ async def setup(interaction: discord.Interaction, role: discord.Role):
 async def setrules(interaction: discord.Interaction, text: str):
     settings = get_guild_settings(interaction.guild.id)
     if not settings:
-        await interaction.response.send_message("⚠️ Kein Setup für diesen Server gefunden. Bitte zuerst `/setup` ausführen.", ephemeral=True)
+        await interaction.response.send_message("⚠️ No setup found for this server. Please run `/setup` first.", ephemeral=True). Bitte zuerst `/setup` ausführen.", ephemeral=True)
         return
 
-formatted_text = text.replace("\\n", "\n")
-channel = interaction.channel
+    formatted_text = text.replace("\n", "
+")
+    channel = interaction.channel
     try:
         message = await channel.fetch_message(settings[0])
         await message.edit(content=formatted_text)
-        await interaction.response.send_message("✅ Regeltext erfolgreich aktualisiert.", ephemeral=True)
+        await interaction.response.send_message("✅ Rules message successfully updated.", ephemeral=True).", ephemeral=True)
     except discord.NotFound:
-        await interaction.response.send_message("❌ Nachricht nicht gefunden. Stelle sicher, dass der Befehl im richtigen Kanal verwendet wird.", ephemeral=True)
+        await interaction.response.send_message("❌ Message not found. Make sure you're in the correct channel.", ephemeral=True). Stelle sicher, dass der Befehl im richtigen Kanal verwendet wird.", ephemeral=True)
     except discord.Forbidden:
-        await interaction.response.send_message("❌ Ich habe keine Berechtigung, um die Nachricht zu bearbeiten.", ephemeral=True)
+        await interaction.response.send_message("❌ I don't have permission to edit that message.", ephemeral=True), um die Nachricht zu bearbeiten.", ephemeral=True)
     except Exception as e:
-        await interaction.response.send_message(f"❌ Fehler: {e}", ephemeral=True)
+        await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
 
 # --- Slash command: viewsetup ---
 @bot.tree.command(name="viewsetup", description="Zeigt das aktuelle Setup für diesen Server")
 async def viewsetup(interaction: discord.Interaction):
     settings = get_guild_settings(interaction.guild.id)
     if not settings:
-        await interaction.response.send_message("ℹ️ Für diesen Server wurde noch kein Setup gespeichert.", ephemeral=True)
+        await interaction.response.send_message("ℹ️ No setup found for this server yet.", ephemeral=True).", ephemeral=True)
     else:
         msg_id, role_id = settings
         await interaction.response.send_message(
-            f"📌 **Aktuelles Setup:**\n• Nachricht ID: `{msg_id}`\n• Rolle ID: `{role_id}`",
+            f"📌 **Current Setup:**
+• Message ID: `{msg_id}`
+• Role ID: `{role_id}`",
             ephemeral=True
         )
 
