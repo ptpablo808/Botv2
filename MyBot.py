@@ -360,7 +360,7 @@ async def announce(interaction: discord.Interaction, title: str, description: st
     "orange": 0xE67E22,
     "purple": 0x9B59B6,
     "gray": 0x95A5A6,
-    "default": 7800ff
+    "default": 0x7800FF
 }
 
 hex_color = predefined_colors.get(color.lower(), None)
