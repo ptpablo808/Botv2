@@ -14,12 +14,22 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "user_warnings.db")
 
 # --- Word lists ---
-warn_words = ["fuck", "lexis", "nword", "nigger"]
+warn_words = []
 reaction_words = ["damn", "xd", "cringe"]
 trigger_words = ["cherax", "chrx"]
 emoji_to_react = "<:logo_s:1371984329504329789>"
 
 # --- Create tables ---
+def create_warnword_table():
+    connection = sqlite3.connect(DB_PATH)
+    cursor = connection.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS warn_words (
+            word TEXT PRIMARY KEY
+        )
+    """)
+    connection.commit()
+    connection.close()
 def create_user_table():
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
@@ -34,7 +44,19 @@ def create_user_table():
     connection.commit()
     connection.close()
 
-def create_setup_table():
+def create_setup_table()
+create_reactionword_table()
+create_warnword_table()
+def create_reactionword_table():
+    connection = sqlite3.connect(DB_PATH)
+    cursor = connection.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS reaction_words (
+            word TEXT PRIMARY KEY
+        )
+    """)
+    connection.commit()
+    connection.close():
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
     cursor.execute("""
@@ -103,6 +125,56 @@ async def on_ready():
     await bot.tree.sync()
     print(f"{bot.user} is online!")
 
+# --- Reaction Word Helpers ---
+def load_reaction_words():
+    connection = sqlite3.connect(DB_PATH)
+    cursor = connection.cursor()
+    cursor.execute("SELECT word FROM reaction_words")
+    rows = cursor.fetchall()
+    connection.close()
+    return [row[0] for row in rows]
+
+def add_reaction_word(word):
+    connection = sqlite3.connect(DB_PATH)
+    cursor = connection.cursor()
+    cursor.execute("INSERT OR IGNORE INTO reaction_words (word) VALUES (?)", (word,))
+    connection.commit()
+    connection.close()
+
+def remove_reaction_word(word):
+    connection = sqlite3.connect(DB_PATH)
+    cursor = connection.cursor()
+    cursor.execute("DELETE FROM reaction_words WHERE word = ?", (word,))
+    connection.commit()
+    connection.close()
+
+reaction_words = load_reaction_words()
+
+# --- Warn Word Helpers ---
+def load_warn_words():
+    connection = sqlite3.connect(DB_PATH)
+    cursor = connection.cursor()
+    cursor.execute("SELECT word FROM warn_words")
+    rows = cursor.fetchall()
+    connection.close()
+    return [row[0] for row in rows]
+
+def add_warn_word(word):
+    connection = sqlite3.connect(DB_PATH)
+    cursor = connection.cursor()
+    cursor.execute("INSERT OR IGNORE INTO warn_words (word) VALUES (?)", (word,))
+    connection.commit()
+    connection.close()
+
+def remove_warn_word(word):
+    connection = sqlite3.connect(DB_PATH)
+    cursor = connection.cursor()
+    cursor.execute("DELETE FROM warn_words WHERE word = ?", (word,))
+    connection.commit()
+    connection.close()
+
+warn_words = load_warn_words()
+
 # --- Handle messages ---
 @bot.event
 async def on_message(msg):
@@ -157,8 +229,69 @@ async def addreactionword(interaction: discord.Interaction, word: str):
     if word in reaction_words:
         await interaction.response.send_message(f"`{word}` is already in the reaction list.", ephemeral=True)
     else:
+        add_reaction_word(word)
         reaction_words.append(word)
         await interaction.response.send_message(f"`{word}` has been added to the reaction list ✅", ephemeral=True)
+    word = word.lower()
+    if word in reaction_words:
+        await interaction.response.send_message(f"`{word}` is already in the reaction list.", ephemeral=True)
+    else:
+        reaction_words.append(word)
+        await interaction.response.send_message(f"`{word}` has been added to the reaction list ✅", ephemeral=True)
+
+# --- Slash command: add warn word ---
+@bot.tree.command(name="addwarnword", description="Adds a new warn word")
+@app_commands.describe(word="The word that should trigger a warning")
+async def addwarnword(interaction: discord.Interaction, word: str):
+    word = word.lower()
+    if word in warn_words:
+        await interaction.response.send_message(f"`{word}` is already in the warn list.", ephemeral=True)
+    else:
+        add_warn_word(word)
+        warn_words.append(word)
+        await interaction.response.send_message(f"`{word}` has been added to the warn list ⚠️", ephemeral=True)
+
+# --- Slash command: list warn words ---
+@bot.tree.command(name="listwarnwords", description="Displays all current warn words")
+async def listwarnwords(interaction: discord.Interaction):
+    if warn_words:
+        words = ", ".join(f"`{word}`" for word in warn_words)
+        await interaction.response.send_message(f"📃 **Current warn words:** {words}", ephemeral=True)
+    else:
+        await interaction.response.send_message("ℹ️ No warn words added yet.", ephemeral=True)
+
+# --- Slash command: remove warn word ---
+@bot.tree.command(name="removewarnword", description="Removes a warn word")
+@app_commands.describe(word="The word to remove")
+async def removewarnword(interaction: discord.Interaction, word: str):
+    word = word.lower()
+    if word in warn_words:
+        remove_warn_word(word)
+        warn_words.remove(word)
+        await interaction.response.send_message(f"❌ `{word}` has been removed from the warn list.", ephemeral=True)
+    else:
+        await interaction.response.send_message(f"⚠️ `{word}` is not in the warn list.", ephemeral=True)
+
+# --- Slash command: list reaction words ---
+@bot.tree.command(name="listreactionwords", description="Displays all current reaction words")
+async def listreactionwords(interaction: discord.Interaction):
+    if reaction_words:
+        words = ", ".join(f"`{word}`" for word in reaction_words)
+        await interaction.response.send_message(f"📃 **Current reaction words:** {words}", ephemeral=True)
+    else:
+        await interaction.response.send_message("ℹ️ No reaction words added yet.", ephemeral=True)
+
+# --- Slash command: remove reaction word ---
+@bot.tree.command(name="removereactionword", description="Removes a reaction word")
+@app_commands.describe(word="The word to remove")
+async def removereactionword(interaction: discord.Interaction, word: str):
+    word = word.lower()
+    if word in reaction_words:
+        remove_reaction_word(word)
+        reaction_words.remove(word)
+        await interaction.response.send_message(f"❌ `{word}` has been removed from the list.", ephemeral=True)
+    else:
+        await interaction.response.send_message(f"⚠️ `{word}` is not in the reaction list.", ephemeral=True)
 
 # --- Slash command: setup ---
 @bot.tree.command(name="setup", description="Post a placeholder rules message and bind a role")
