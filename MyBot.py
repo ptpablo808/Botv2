@@ -184,7 +184,7 @@ async def addreactionword(interaction: discord.Interaction, word: str):
 @app_commands.describe(role="The role to give when reacted")
 async def setup(interaction: discord.Interaction, role: discord.Role):
     await interaction.response.defer(ephemeral=True)
-    msg = await interaction.channel.send("📜 **Regeln folgen...**")
+    msg = await interaction.channel.send("📜 **Waiting for Rules...**")
     await msg.add_reaction("✅")
 
     connection = sqlite3.connect(DB_PATH)
@@ -196,15 +196,15 @@ async def setup(interaction: discord.Interaction, role: discord.Role):
     connection.commit()
     connection.close()
 
-    await interaction.followup.send("✅ Setup abgeschlossen! Nachricht wurde gepostet. Verwende nun `/setrules`, um den Text zu ändern.", ephemeral=True)
+    await interaction.followup.send("✅ Setup done! Now use `/setrules`, to change content.", ephemeral=True)
 
 # --- Slash command: setrules ---
-@bot.tree.command(name="setrules", description="Aktualisiert den Inhalt der Regel-Nachricht")
-@app_commands.describe(text="Der neue Text für die Regel-Nachricht")
+@bot.tree.command(name="setrules", description="Set rules")
+@app_commands.describe(text="New rules text")
 async def setrules(interaction: discord.Interaction, text: str):
     settings = get_guild_settings(interaction.guild.id)
     if not settings:
-        await interaction.response.send_message("⚠️ Kein Setup für diesen Server gefunden. Bitte zuerst `/setup` ausführen.", ephemeral=True)
+        await interaction.response.send_message("⚠️ No setup found for this server. Use `/setup` first.", ephemeral=True)
         return
 
     formatted_text = text.replace("\\n", "\n")  # Fix hier!
@@ -213,7 +213,7 @@ async def setrules(interaction: discord.Interaction, text: str):
     try:
         message = await channel.fetch_message(settings[0])
         await message.edit(content=formatted_text)
-        await interaction.response.send_message("✅ Regeltext erfolgreich aktualisiert.", ephemeral=True)
+        await interaction.response.send_message("✅ Rules updated.", ephemeral=True)
     except discord.NotFound:
         await interaction.response.send_message("❌ Nachricht nicht gefunden. Stelle sicher, dass der Befehl im richtigen Kanal verwendet wird.", ephemeral=True)
     except discord.Forbidden:
@@ -223,11 +223,11 @@ async def setrules(interaction: discord.Interaction, text: str):
 
 
 # --- Slash command: viewsetup ---
-@bot.tree.command(name="viewsetup", description="Zeigt das aktuelle Setup für diesen Server")
+@bot.tree.command(name="viewsetup", description="Show server setup")
 async def viewsetup(interaction: discord.Interaction):
     settings = get_guild_settings(interaction.guild.id)
     if not settings:
-        await interaction.response.send_message("ℹ️ Für diesen Server wurde noch kein Setup gespeichert.", ephemeral=True)
+        await interaction.response.send_message("ℹ️ No setup found for this server.", ephemeral=True)
     else:
         msg_id, role_id = settings
         await interaction.response.send_message(
