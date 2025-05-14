@@ -370,16 +370,14 @@ async def announce(interaction: discord.Interaction, title: str, description: st
         except ValueError:
             hex_color = predefined_colors["default"]
 
-    embed_color = discord.Color(hex_color)
+embed_color = discord.Color(hex_color)
 
-    embed = discord.Embed(
+embed = discord.Embed(
     title=title,
     description=description.replace("\\n", "\n"),
     color=embed_color
-),
-    color=embed_color
-    )
-    embed.set_footer(text=f"Announcement by {interaction.user.display_name} · via /announce", icon_url=interaction.user.avatar.url)
+)
+embed.set_footer(text=f"Announcement by {interaction.user.display_name} · via /announce", icon_url=interaction.user.avatar.url)
 
     await interaction.channel.send(embed=embed)
     await interaction.followup.send("✅ Announcement sent ✅", ephemeral=True)
