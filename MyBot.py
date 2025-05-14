@@ -379,8 +379,8 @@ embed = discord.Embed(
 )
 embed.set_footer(text=f"Announcement by {interaction.user.display_name} · via /announce", icon_url=interaction.user.avatar.url)
 
-    await interaction.channel.send(embed=embed)
-    await interaction.followup.send("✅ Announcement sent ✅", ephemeral=True)
+await interaction.channel.send(embed=embed)
+await interaction.followup.send("✅ Announcement sent ✅", ephemeral=True)
 
 # --- Slash command: generate image ---
 @bot.tree.command(name="generate", description="Generates an image with text")
