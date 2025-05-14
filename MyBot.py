@@ -359,9 +359,7 @@ async def announce(interaction: discord.Interaction, title: str, description: st
 
     embed = discord.Embed(
         title=title,
-        description=description.replace("\n", "
-")
-"),
+        description=description.replace("\\n", "\n"),
         color=embed_color
     )
     embed.set_footer(text=f"Announcement by {interaction.user.display_name}", icon_url=interaction.user.avatar.url)
