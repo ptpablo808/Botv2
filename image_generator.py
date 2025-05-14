@@ -4,8 +4,8 @@ import os
 def create_image(text, bg, font_key, effect):
     width, height = 1080, 1080
 
-    # --- Hintergrund: entweder Farbe oder Bild ---
-    bg_path = f"./assets/backgrounds/{bg}"
+    # --- Hintergrund laden: Farbe oder Bild ---
+    bg_path = os.path.join("assets", "backgrounds", bg)
     if os.path.exists(bg_path):
         img = Image.open(bg_path).convert("RGB").resize((width, height))
     else:
@@ -13,14 +13,14 @@ def create_image(text, bg, font_key, effect):
 
     draw = ImageDraw.Draw(img)
 
-    # --- Schriftarten ---
+    # --- Schriftarten-Zuordnung ---
     font_map = {
         "celsius_flower": "Celsius Flower.ttf",
         "high_speed": "HIGH SPEED.ttf"
     }
 
     font_file = font_map.get(font_key.lower(), "arial.ttf")
-    font_path = f"./assets/fonts/{font_file}"
+    font_path = os.path.join("assets", "fonts", font_file)
     try:
         font = ImageFont.truetype(font_path, 80)
     except:
@@ -43,6 +43,8 @@ def create_image(text, bg, font_key, effect):
     # --- Finaler Text ---
     draw.text(position, text, font=font, fill="black")
 
-    save_path = f"./generated/generated_{text[:5].replace(' ', '_')}.png"
+    # --- Bild speichern ---
+    safe_text = "".join(c if c.isalnum() else "_" for c in text[:10])
+    save_path = os.path.join("generated", f"{safe_text}.png")
     img.save(save_path)
     return save_path
