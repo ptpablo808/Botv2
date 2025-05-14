@@ -373,7 +373,7 @@ if hex_color is None:
 
 embed_color = discord.Color(hex_color)
 
-    embed = discord.Embed(
+embed = discord.Embed(
         title=title,
         description=description.replace("\n", "*n"),
         color=embed_color
