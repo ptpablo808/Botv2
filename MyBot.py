@@ -79,6 +79,12 @@ create_setup_table()
 create_reactionword_table()
 create_warnword_table()
 
+# --- Discord Bot Setup ---
+intents = discord.Intents.default()
+intents.message_content = True
+intents.members = True
+bot = commands.Bot(command_prefix="/", intents=intents)
+
 # --- Slash command: announce ---
 @bot.tree.command(name="announce", description="Sends an embedded announcement")
 @app_commands.describe(
@@ -119,6 +125,8 @@ async def announce(interaction: discord.Interaction, title: str, description: st
 
     await interaction.channel.send(embed=embed)
     await interaction.followup.send("✅ Announcement sent ✅", ephemeral=True)
+
+
 
 #
 # Du kannst hier auf Wunsch sagen: "Füge Protokolle für Funktion XYZ hinzu" oder "zeige mir wo was passiert".
