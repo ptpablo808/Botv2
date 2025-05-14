@@ -375,7 +375,7 @@ embed_color = discord.Color(hex_color)
 
 embed = discord.Embed(
         title=title,
-        description=description.replace("\n", "*n"),
+        description=description.replace("\\n", "\n"),
         color=embed_color
     )
     embed.set_footer(text=f"Announcement by {interaction.user.display_name}", icon_url=interaction.user.avatar.url)
