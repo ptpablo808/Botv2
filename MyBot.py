@@ -347,41 +347,42 @@ async def viewsetup(interaction: discord.Interaction):
 # --- Slash command: announce ---
 @bot.tree.command(name="announce", description="Sends an embedded announcement")
 @app_commands.describe(
-    title="Title of announcement",
-    description="Content of announcement",
-    color="Color name or HEX code"
+    title="Title of the announcement",
+    description="Content of the announcement",
+    color="Hex color code (e.g. #ff0000) or name (red, blue, green, etc.)"
 )
 async def announce(interaction: discord.Interaction, title: str, description: str, color: str = "#00ff00"):
     predefined_colors = {
-    "red": 0xFF0000,
-    "blue": 0x3498DB,
-    "green": 0x2ECC71,
-    "yellow": 0xF1C40F,
-    "orange": 0xE67E22,
-    "purple": 0x9B59B6,
-    "gray": 0x95A5A6,
-    "default": 0x7800FF
-}
+        "red": 0xFF0000,
+        "blue": 0x3498DB,
+        "green": 0x2ECC71,
+        "yellow": 0xF1C40F,
+        "orange": 0xE67E22,
+        "purple": 0x9B59B6,
+        "gray": 0x95A5A6,
+        "default": 0x00FF00
+    }
 
-hex_color = predefined_colors.get(color.lower(), None)
+    hex_color = predefined_colors.get(color.lower(), None)
+    if hex_color is None:
+        try:
+            hex_color = int(color.strip("#"), 16)
+        except ValueError:
+            hex_color = predefined_colors["default"]
 
-if hex_color is None:
-    try:
-        hex_color = int(color.strip("#"), 16)
-    except ValueError:
-        hex_color = predefined_colors["default"]
+    embed_color = discord.Color(hex_color)
 
-embed_color = discord.Color(hex_color)
-
-embed = discord.Embed(
+    embed = discord.Embed(
         title=title,
         description=description.replace("\\n", "\n"),
         color=embed_color
+    ),
+        color=embed_color
     )
-embed.set_footer(text=f"Announcement by {interaction.user.display_name}", icon_url=interaction.user.avatar.url)
+    embed.set_footer(text=f"Announcement by {interaction.user.display_name} · via /announce", icon_url=interaction.user.avatar.url)
 
-    await interaction.response.send_message(embed=embed, ephemeral=False)
-    await interaction.followup.send("✅ Announcement sent!", ephemeral=True)
+    await interaction.channel.send(embed=embed)
+    await interaction.followup.send("✅ Announcement sent ✅", ephemeral=True)
 
 # --- Slash command: generate image ---
 @bot.tree.command(name="generate", description="Generates an image with text")
