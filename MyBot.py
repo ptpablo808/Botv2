@@ -45,8 +45,6 @@ def create_user_table():
     connection.close()
 
 def create_setup_table():
-create_reactionword_table()
-create_warnword_table():
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
     cursor.execute("""
