@@ -208,8 +208,7 @@ async def setrules(interaction: discord.Interaction, text: str):
         return
 
 formatted_text = text.replace("\\n", "\n")
-
-    channel = interaction.channel
+channel = interaction.channel
     try:
         message = await channel.fetch_message(settings[0])
         await message.edit(content=formatted_text)
