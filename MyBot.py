@@ -380,8 +380,8 @@ async def announce(interaction: discord.Interaction, title: str, description: st
         color=embed_color
     )
     embed.set_footer(
-        text=f"Announcement by {interaction.user.display_name} · via /announce",
-        icon_url=interaction.user.avatar.url
+        text=f"Announcement by {interaction.user.display_name}",
+        icon_url=bot.user.display_avatar.url
     )
 
     # --- Sende das Embed und Bestätigung ---
