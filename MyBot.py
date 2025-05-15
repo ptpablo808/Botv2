@@ -322,8 +322,7 @@ async def setrules(interaction: discord.Interaction, text: str):
     channel = interaction.channel
     msg = await channel.fetch_message(rs[0])
     # Replace placeholder with actual newline
-    formatted_text = text.replace("*n", "
-")
+    formatted_text = text.replace("\\n", "\n")
 
     # Edit message or fallback to file
     if len(formatted_text) <= 4096:
