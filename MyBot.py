@@ -345,7 +345,7 @@ async def viewsetup(interaction: discord.Interaction):
         )
 
 # --- Slash command: announce ---
-@bot.tree.command(name="announce", description="Sends an embedded announcement")
+@bot.tree.command(name="announce", description="Sends an ded announcement")
 @app_commands.describe(
     title="Title of the announcement",
     description="Content of the announcement",
@@ -370,17 +370,20 @@ async def announce(interaction: discord.Interaction, title: str, description: st
         except ValueError:
             hex_color = predefined_colors["default"]
 
-    embed_color = discord.Color(hex_color)
+    _color = discord.Color(hex_color)
 
-    embed = discord.Embed(
+embed = discord.Embed(
     title=title,
     description=description.replace("\\n", "\n"),
     color=embed_color
+)
+embed.set_footer(
+    text=f"Announcement by {interaction.user.display_name} · via /announce", 
+    icon_url=interaction.user.avatar.url
+)
 
-    embed.set_footer(text=f"Announcement by {interaction.user.display_name} · via /announce", icon_url=interaction.user.avatar.url)
-
-    await interaction.channel.send(embed=embed)
-    await interaction.followup.send("✅ Announcement sent ✅", ephemeral=True)
+await interaction.channel.send(embed=embed)
+await interaction.followup.send("✅ Announcement sent ✅", ephemeral=True)
 
 # --- Slash command: generate image ---
 @bot.tree.command(name="generate", description="Generates an image with text")
