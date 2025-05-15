@@ -325,7 +325,7 @@ async def setrules(interaction: discord.Interaction, text: str):
     formatted_text = text.replace("\\n", "\n")
 
     # Edit message or fallback to file
-    if len(formatted_text) <= 4096:
+    if len(formatted_text) <= 2000:
         await msg.edit(content=formatted_text)
         await interaction.response.send_message("✅ Rules updated.", ephemeral=True)
     else:
