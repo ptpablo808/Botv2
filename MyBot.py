@@ -311,25 +311,30 @@ async def setup(interaction: discord.Interaction, role: discord.Role):
     await interaction.response.send_message("✅ Setup complete! Placeholder message posted. Use `/setrules` to edit the content.", ephemeral=True)
 
 # --- Slash command: setrules ---
-@bot.tree.command(name="setrules", description="Updates the content of the rules message")
-@app_commands.describe(text="The new content for the rules message")
+@bot.tree.command(name="setrules", description="Edit the posted rules message")
+@app_commands.describe(text="New rules text (use *n for newlines)")
 async def setrules(interaction: discord.Interaction, text: str):
-    settings = get_guild_settings(interaction.guild.id)
-    if not settings:
-        await interaction.response.send_message("⚠️ No setup found for this server. Please run `/setup` first.", ephemeral=True)
+    rs = get_guild_settings(interaction.guild.id)
+    if not rs:
+        await interaction.response.send_message("⚠️ No rules setup found.", ephemeral=True)
         return
-    formatted_text = text.replace("\\n", "\n")
+
     channel = interaction.channel
-    try:
-        message = await channel.fetch_message(settings[0])
-        await message.edit(content=formatted_text)
-        await interaction.response.send_message("✅ Rules message successfully updated.", ephemeral=True)
-    except discord.NotFound:
-        await interaction.response.send_message("❌ Message not found. Make sure you're in the correct channel.", ephemeral=True)
-    except discord.Forbidden:
-        await interaction.response.send_message("❌ I don't have permission to edit that message.", ephemeral=True)
-    except Exception as e:
-        await interaction.response.send_message(f"❌ Error: {e}", ephemeral=True)
+    msg = await channel.fetch_message(rs[0])
+    formatted_text = text.replace("\\n", "\n")
+
+    # Use embed/message if short enough
+    if len(formatted_text) <= 4096:
+        await msg.edit(content=formatted_text)
+        await interaction.response.send_message("✅ Rules updated.", ephemeral=True)
+    else:
+        # Fallback to file for very long rules
+        filename = f"rules_{interaction.guild.id}.txt"
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(formatted_text)
+        await msg.edit(content="📄 Rules are too long; see attached file.")
+        await interaction.followup.send(file=discord.File(filename), ephemeral=True)
+        os.remove(filename)
 
 # --- Slash command: viewsetup ---
 @bot.tree.command(name="viewsetup", description="Displays the current setup for this server")
