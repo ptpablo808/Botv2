@@ -352,11 +352,13 @@ async def viewsetup(interaction: discord.Interaction):
 # --- Slash command: announce ---
 @bot.tree.command(name="announce", description="Sends an embedded announcement")
 @app_commands.describe(
-    title="Title of the announcement",
-    description="Content of the announcement",
+    title="Title of announcement",
+    description="Content of announcement",
     color="Hex color code (e.g. #ff0000) or name (red, blue, green, etc.)"
 )
 async def announce(interaction: discord.Interaction, title: str, description: str, color: str = "#00ff00"):
+    await interaction.response.defer(ephemeral=True)  # Defer = Discord Bescheid geben: "Bin dran"
+
     # --- Farb-Logik ---
     predefined_colors = {
         "red": 0xFF0000,
@@ -366,13 +368,14 @@ async def announce(interaction: discord.Interaction, title: str, description: st
         "orange": 0xE67E22,
         "purple": 0x9B59B6,
         "gray": 0x95A5A6,
-        "default": 0x00FF00
+        "cherax": 0x5F03DC,
+        "default": 0x6400FF
     }
 
     hex_color = predefined_colors.get(color.lower())
     if hex_color is None:
         try:
-            hex_color = int(color.strip("#"), 16)
+            hex_color = int(color.lstrip("#"), 16)
         except ValueError:
             hex_color = predefined_colors["default"]
 
@@ -389,9 +392,10 @@ async def announce(interaction: discord.Interaction, title: str, description: st
         icon_url=bot.user.display_avatar.url
     )
 
-    # --- Sende das Embed und Bestätigung ---
+    # --- Sende Embed & bestätige ---
     await interaction.channel.send(embed=embed)
     await interaction.followup.send("✅ Announcement sent ✅", ephemeral=True)
+
 
 # --- Slash command: generate image ---
 @bot.tree.command(name="generate", description="Generates an image with text")
