@@ -321,14 +321,15 @@ async def setrules(interaction: discord.Interaction, text: str):
 
     channel = interaction.channel
     msg = await channel.fetch_message(rs[0])
-    formatted_text = text.replace("\\n", "\n")
+    # Replace placeholder with actual newline
+    formatted_text = text.replace("*n", "
+")
 
-    # Use embed/message if short enough
+    # Edit message or fallback to file
     if len(formatted_text) <= 4096:
         await msg.edit(content=formatted_text)
         await interaction.response.send_message("✅ Rules updated.", ephemeral=True)
     else:
-        # Fallback to file for very long rules
         filename = f"rules_{interaction.guild.id}.txt"
         with open(filename, "w", encoding="utf-8") as f:
             f.write(formatted_text)
