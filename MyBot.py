@@ -352,49 +352,50 @@ async def viewsetup(interaction: discord.Interaction):
 # --- Slash command: announce ---
 @bot.tree.command(name="announce", description="Sends an embedded announcement")
 @app_commands.describe(
-    title="Title of announcement",
-    description="Content of announcement",
+    title="Title of the announcement",
+    description="Content of the announcement",
     color="Hex color code (e.g. #ff0000) or name (red, blue, green, etc.)"
 )
 async def announce(interaction: discord.Interaction, title: str, description: str, color: str = "#00ff00"):
-    await interaction.response.defer(ephemeral=True)  # Defer = Discord Bescheid geben: "Bin dran"
+    try:
+        await interaction.response.defer(ephemeral=True)
 
-    # --- Farb-Logik ---
-    predefined_colors = {
-        "red": 0xFF0000,
-        "blue": 0x3498DB,
-        "green": 0x2ECC71,
-        "yellow": 0xF1C40F,
-        "orange": 0xE67E22,
-        "purple": 0x9B59B6,
-        "gray": 0x95A5A6,
-        "cherax": 0x5F03DC,
-        "default": 0x6400FF
-    }
+        predefined_colors = {
+            "red": 0xFF0000,
+            "blue": 0x3498DB,
+            "green": 0x2ECC71,
+            "yellow": 0xF1C40F,
+            "orange": 0xE67E22,
+            "purple": 0x9B59B6,
+            "gray": 0x95A5A6,
+            "cherax": 0x6200E7,
+            "default": 0x6200E7
+        }
 
-    hex_color = predefined_colors.get(color.lower())
-    if hex_color is None:
-        try:
-            hex_color = int(color.lstrip("#"), 16)
-        except ValueError:
-            hex_color = predefined_colors["default"]
+        hex_color = predefined_colors.get(color.lower())
+        if hex_color is None:
+            try:
+                hex_color = int(color.lstrip("#"), 16)
+            except ValueError:
+                hex_color = predefined_colors["default"]
 
-    embed_color = discord.Color(hex_color)
+        embed = discord.Embed(
+            title=title,
+            description=description.replace("\\n", "\n"),
+            color=discord.Color(hex_color)
+        )
+        embed.set_footer(
+            text=f"Announcement by {interaction.user.display_name}",
+            icon_url=bot.user.display_avatar.url
+        )
 
-    # --- Embed-Erstellung ---
-    embed = discord.Embed(
-        title=title,
-        description=description.replace("\\n", "\n"),
-        color=embed_color
-    )
-    embed.set_footer(
-        text=f"Announcement by {interaction.user.display_name}",
-        icon_url=bot.user.display_avatar.url
-    )
+        await interaction.channel.send(embed=embed)
+        await interaction.followup.send("✅ Announcement sent ✅", ephemeral=True)
 
-    # --- Sende Embed & bestätige ---
-    await interaction.channel.send(embed=embed)
-    await interaction.followup.send("✅ Announcement sent ✅", ephemeral=True)
+    except Exception as e:
+        print(f"[announce] Fehler: {e}")
+        await interaction.followup.send(f"❌ Fehler beim Senden: {e}", ephemeral=True)
+
 
 
 # --- Slash command: generate image ---
