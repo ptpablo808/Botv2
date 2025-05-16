@@ -51,7 +51,8 @@ def create_setup_table():
         CREATE TABLE IF NOT EXISTS guild_settings (
             guild_id INTEGER PRIMARY KEY,
             rules_message_id INTEGER,
-            role_id INTEGER
+            role_id INTEGER,
+            reaction_emoji TEXT DEFAULT '✅'
         )
     """)
     connection.commit()
@@ -115,7 +116,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 def get_guild_settings(guild_id):
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
-    cursor.execute("SELECT rules_message_id, role_id FROM guild_settings WHERE guild_id = ?", (guild_id,))
+    cursor.execute("SELECT rules_message_id, role_id, reaction_emoji FROM guild_settings WHERE guild_id = ?", (guild_id,))
     row = cursor.fetchone()
     connection.close()
     return row
@@ -296,16 +297,19 @@ async def removereactionword(interaction: discord.Interaction, word: str):
 
 # --- Slash command: setup ---
 @bot.tree.command(name="setup", description="Post a placeholder rules message and bind a role")
-@app_commands.describe(role="The role to give when reacted")
-async def setup(interaction: discord.Interaction, role: discord.Role):
+@app_commands.describe(
+    role="The role to give when reacted",
+    emoji="The emoji users must react with (default ✅)"
+)
+async def setup(interaction: discord.Interaction, role: discord.Role, emoji: str = "✅"):
     msg = await interaction.channel.send("📜 **Waiting for Rules...**")
-    await msg.add_reaction("✅")
+    await msg.add_reaction(emoji)
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
     cursor.execute("""
-        INSERT OR REPLACE INTO guild_settings (guild_id, rules_message_id, role_id)
-        VALUES (?, ?, ?)
-    """, (interaction.guild.id, msg.id, role.id))
+        INSERT OR REPLACE INTO guild_settings (guild_id, rules_message_id, role_id, reaction_emoji)
+        VALUES (?, ?, ?, ?)
+    """, (interaction.guild.id, msg.id, role.id, emoji))
     connection.commit()
     connection.close()
     await interaction.response.send_message("✅ Setup complete! Placeholder message posted. Use `/setrules` to edit the content.", ephemeral=True)
@@ -431,8 +435,8 @@ async def on_raw_reaction_add(payload):
     settings = get_guild_settings(payload.guild_id)
     if not settings:
         return
-    rules_msg_id, role_id = settings
-    if payload.message_id != rules_msg_id or str(payload.emoji) != "✅":
+    rules_msg_id, role_id, reaction_emoji = settings
+    if payload.message_id != rules_msg_id or str(payload.emoji) != reaction_emoji:
         return
     guild = bot.get_guild(payload.guild_id)
     role = guild.get_role(role_id)
@@ -449,8 +453,8 @@ async def on_raw_reaction_remove(payload):
     settings = get_guild_settings(payload.guild_id)
     if not settings:
         return
-    rules_msg_id, role_id = settings
-    if payload.message_id != rules_msg_id or str(payload.emoji) != "✅":
+    rules_msg_id, role_id, reaction_emoji = settings
+    if payload.message_id != rules_msg_id or str(payload.emoji) != reaction_emoji:
         return
     guild = bot.get_guild(payload.guild_id)
     role = guild.get_role(role_id)
