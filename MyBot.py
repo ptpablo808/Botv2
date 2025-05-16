@@ -7,13 +7,10 @@ from dotenv import load_dotenv
 import sqlite3
 from keep_alive import keep_alive
 import random
-from image_generator import create_image  # NEU
-import openai
 
 # --- Load environment variables ---
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
-openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # --- Paths & Database ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -422,24 +419,6 @@ async def announce(
         await interaction.channel.send(embed=embed)
 
     await interaction.followup.send("✅ Announcement sent ✅", ephemeral=True)
-
-
-# --- Slash command: generate image ---
-@bot.tree.command(name="aiimage", description="Generate an AI image from your prompt")
-@app_commands.describe(prompt="Describe what image you want (e.g. 'cat in space')")
-async def aiimage(interaction: discord.Interaction, prompt: str):
-    await interaction.response.defer(ephemeral=True)
-    try:
-        response = openai.Image.create(
-            prompt=prompt,
-            n=1,
-            size="512x512"
-        )
-        image_url = response['data'][0]['url']
-        await interaction.followup.send(content=f"🖼️ **Prompt:** `{prompt}`\n{image_url}")
-    except Exception as e:
-        print(f"[aiimage] Fehler: {e}")
-        await interaction.followup.send(f"❌ Fehler bei der Generierung: {e}", ephemeral=True)
 
 
 # --- React to rules message ---
