@@ -8,6 +8,12 @@ import sqlite3
 from keep_alive import keep_alive
 import random
 from image_generator import create_image  # NEU
+import openai
+
+# --- Load environment variables ---
+load_dotenv()
+TOKEN = os.getenv("DISCORD_TOKEN")
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # --- Paths & Database ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -30,6 +36,7 @@ def create_warnword_table():
     """)
     connection.commit()
     connection.close()
+
 def create_user_table():
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
@@ -98,6 +105,7 @@ def increase_and_get_warnings(user_id: int, guild_id: int):
         connection.commit()
         connection.close()
         return new_count
+
 
 # --- Load environment variables ---
 load_dotenv()
@@ -417,26 +425,21 @@ async def announce(
 
 
 # --- Slash command: generate image ---
-@bot.tree.command(name="generate", description="Generates an image with text")
-@app_commands.describe(
-    text="Your text",
-    bg="Background color or image (e.g. 'bg_1.png')",
-    font="Font name: celsius_flower or high_speed",
-    effect="Effect: e.g. glow"
-)
-async def generate(interaction: discord.Interaction, text: str, bg: str = "white", font: str = "arial", effect: str = "none"):
+@bot.tree.command(name="aiimage", description="Generate an AI image from your prompt")
+@app_commands.describe(prompt="Describe what image you want (e.g. 'cat in space')")
+async def aiimage(interaction: discord.Interaction, prompt: str):
     await interaction.response.defer(ephemeral=True)
-
     try:
-        image_path = create_image(text, bg, font, effect)
-
-        if image_path and os.path.exists(image_path):
-            await interaction.followup.send(file=discord.File(image_path))
-        else:
-            await interaction.followup.send("❌ Bild konnte nicht generiert werden.", ephemeral=True)
+        response = openai.Image.create(
+            prompt=prompt,
+            n=1,
+            size="512x512"
+        )
+        image_url = response['data'][0]['url']
+        await interaction.followup.send(content=f"🖼️ **Prompt:** `{prompt}`\n{image_url}")
     except Exception as e:
-        print(f"[generate] Fehler: {e}")
-        await interaction.followup.send(f"❌ Fehler beim Generieren: {e}", ephemeral=True)
+        print(f"[aiimage] Fehler: {e}")
+        await interaction.followup.send(f"❌ Fehler bei der Generierung: {e}", ephemeral=True)
 
 
 # --- React to rules message ---
