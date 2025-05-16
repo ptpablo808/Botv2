@@ -425,14 +425,18 @@ async def announce(
     effect="Effect: e.g. glow"
 )
 async def generate(interaction: discord.Interaction, text: str, bg: str = "white", font: str = "arial", effect: str = "none"):
-    await interaction.response.defer()
-    
-    image_path = create_image(text, bg, font, effect)
-    
-    if image_path and os.path.exists(image_path):
-        await interaction.followup.send(file=discord.File(image_path))
-    else:
-        await interaction.followup.send("❌ Fehler beim Generieren des Bilds.", ephemeral=True)
+    await interaction.response.defer(ephemeral=True)
+
+    try:
+        image_path = create_image(text, bg, font, effect)
+
+        if image_path and os.path.exists(image_path):
+            await interaction.followup.send(file=discord.File(image_path))
+        else:
+            await interaction.followup.send("❌ Bild konnte nicht generiert werden.", ephemeral=True)
+    except Exception as e:
+        print(f"[generate] Fehler: {e}")
+        await interaction.followup.send(f"❌ Fehler beim Generieren: {e}", ephemeral=True)
 
 
 # --- React to rules message ---
