@@ -8,6 +8,7 @@ import sqlite3
 from keep_alive import keep_alive
 import random
 from image_generator import generate_image, FONT_CHOICES, BG_CHOICES
+import traceback
 
 # --- Load environment variables ---
 load_dotenv()
@@ -496,8 +497,12 @@ async def imagegen(
             output_path=output_path
         )
         await interaction.followup.send(file=discord.File(output_path))
+    except discord.HTTPException as http_err:
+        await interaction.followup.send("❌ Discord API blockiert dich temporär (429). Warte kurz und versuche es erneut.", ephemeral=True)
+        print("HTTPException:", http_err)
     except Exception as e:
-        await interaction.followup.send(f"❌ Fehler: {e}", ephemeral=True)
+        await interaction.followup.send("❌ Unerwarteter Fehler beim Generieren des Bildes.", ephemeral=True)
+        traceback.print_exc()
     finally:
         if os.path.exists(output_path):
             os.remove(output_path)
