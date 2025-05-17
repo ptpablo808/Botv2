@@ -2,6 +2,26 @@ from PIL import Image, ImageEnhance, ImageChops
 import os
 from imageUtils import color2hue, change_hue
 
+FONT_CHOICES = {
+    "Font 1": 1,
+    "Font 2": 2,
+    "Font 3": 3,
+    "Font 4": 4,
+    "Font 5": 5,
+    "Font 6": 6,
+    "Font 7": 7
+}
+
+BG_CHOICES = {
+    "Background 1": 1,
+    "Background 2": 2,
+    "Background 3": 3,
+    "Background 4": 4,
+    "Background 5": 5,
+    "Background 6": 6,
+    "Background 7": 7
+}
+
 def generate_image(text: str, font_index: int, bg_index: int, overlay_index: int = None, color: str = "#ffffff", colorful: bool = False, output_path: str = "generated/generated_image.png"):
     # Konfiguration
     width, height = 1024, 1024  # Quadratisch
