@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 import sqlite3
 from keep_alive import keep_alive
 import random
+from image_generator import generate_image, FONT_CHOICES, BG_CHOICES
 
 # --- Load environment variables ---
 load_dotenv()
@@ -457,6 +458,49 @@ async def on_raw_reaction_remove(payload):
             print(f"Removed role from {member.display_name}")
         except Exception as e:
             print(f"Error removing role: {e}")
+
+@bot.tree.command(name="imagegen", description="Erzeugt ein Bild mit Text und Overlays")
+@app_commands.describe(
+    text="Der Text, der auf dem Bild erscheinen soll",
+    font="Wähle einen Font",
+    bg="Wähle einen Hintergrund",
+    overlay_index="Overlay-Index (z. B. 0, 1, 2...)",
+    color="Hex-Farbe (z. B. #ff0000)",
+    colorful="Zusätzlicher Farbeffekt"
+)
+@app_commands.choices(
+    font=[discord.app_commands.Choice(name=name, value=value) for name, value in FONT_CHOICES.items()],
+    bg=[discord.app_commands.Choice(name=name, value=value) for name, value in BG_CHOICES.items()]
+)
+async def imagegen(
+    interaction: discord.Interaction,
+    text: str,
+    font: app_commands.Choice[int],
+    bg: app_commands.Choice[int],
+    overlay_index: int = 0,
+    color: str = "#ffffff",
+    colorful: bool = False
+):
+    await interaction.response.defer()
+
+    output_path = f"generated/generated_{interaction.id}.png"
+
+    try:
+        generate_image(
+            text=text,
+            font_index=font.value,
+            bg_index=bg.value,
+            overlay_index=overlay_index,
+            color=color,
+            colorful=colorful,
+            output_path=output_path
+        )
+        await interaction.followup.send(file=discord.File(output_path))
+    except Exception as e:
+        await interaction.followup.send(f"❌ Fehler: {e}", ephemeral=True)
+    finally:
+        if os.path.exists(output_path):
+            os.remove(output_path)
 
 # --- Run the bot ---
 bot.run(TOKEN)

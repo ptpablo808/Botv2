@@ -1,10 +1,11 @@
 from image_generator import generate_image
 
 generate_image(
-    text="DISCORD",
-    font_index=1,
-    bg_index=2,
-    overlay_index=3,
-    output_path="generated/test_image.png"
+    text="POO",
+    font_index=5,
+    bg_index=5,              # ← hier z. B. 4
+    overlay_index=6,         # ← auch 4
+    color="#EA02FF",
+    colorful=False,
+    output_path="generated/00.png"
 )
-print("✅ Testbild generiert!")
