@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 import sqlite3
 from keep_alive import keep_alive
 import random
-from image_generator import generate_image, FONT_CHOICES, BG_CHOICES
+from image_generator import generate_image, FONT_CHOICES, BG_CHOICES, COLOR_CHOICES, OVERLAY_CHOICES
 import traceback
 
 with open("token.txt", "r") as f:
@@ -455,30 +455,33 @@ async def on_raw_reaction_remove(payload):
         except Exception as e:
             print(f"Error removing role: {e}")
 
-@bot.tree.command(name="imagegen", description="Erzeugt ein Bild mit Text und Overlays")
+@bot.tree.command(name="imagegen", description="Generate an image with text and overlays")
 @app_commands.describe(
-    text="Der Text, der auf dem Bild erscheinen soll",
-    font="Wähle einen Font",
-    bg="Wähle einen Hintergrund",
-    overlay_index="Overlay-Index (z. B. 0, 1, 2...)",
-    color="Hex-Farbe (z. B. #ff0000)",
-    colorful="Zusätzlicher Farbeffekt"
+    text="The text that will appear on the image",
+    font="Choose a font",
+    bg="Choose a background",
+    overlay="Choose an overlay",
+    color="Select a predefined color or enter a hex code",
+    colorful="Add an additional colorful effect"
 )
 @app_commands.choices(
     font=[discord.app_commands.Choice(name=name, value=value) for name, value in FONT_CHOICES.items()],
-    bg=[discord.app_commands.Choice(name=name, value=value) for name, value in BG_CHOICES.items()]
+    bg=[discord.app_commands.Choice(name=name, value=value) for name, value in BG_CHOICES.items()],
+    overlay=[discord.app_commands.Choice(name=name, value=value) for name, value in OVERLAY_CHOICES.items()],
+    color=[discord.app_commands.Choice(name=name, value=value) for name, value in COLOR_CHOICES.items()]
 )
 async def imagegen(
     interaction: discord.Interaction,
     text: str,
     font: app_commands.Choice[int],
     bg: app_commands.Choice[int],
-    overlay_index: int = 0,
-    color: str = "#ffffff",
+    overlay: app_commands.Choice[int],
+    color: app_commands.Choice[str] = None,
     colorful: bool = False
 ):
     await interaction.response.defer()
 
+    hex_color = color.value if color else "#8D0AF5"
     output_path = f"generated/generated_{interaction.id}.png"
 
     try:
@@ -486,17 +489,17 @@ async def imagegen(
             text=text,
             font_index=font.value,
             bg_index=bg.value,
-            overlay_index=overlay_index,
-            color=color,
+            overlay_index=overlay.value,
+            color=hex_color,
             colorful=colorful,
             output_path=output_path
         )
         await interaction.followup.send(file=discord.File(output_path))
     except discord.HTTPException as http_err:
-        await interaction.followup.send("❌ Discord API blockiert dich temporär (429). Warte kurz und versuche es erneut.", ephemeral=True)
+        await interaction.followup.send("❌ Discord API temporarily blocked you (429). Please wait and try again.", ephemeral=True)
         print("HTTPException:", http_err)
     except Exception as e:
-        await interaction.followup.send("❌ Unerwarteter Fehler beim Generieren des Bildes.", ephemeral=True)
+        await interaction.followup.send("❌ Unexpected error occurred while generating the image.", ephemeral=True)
         traceback.print_exc()
     finally:
         if os.path.exists(output_path):

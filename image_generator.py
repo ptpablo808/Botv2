@@ -7,50 +7,56 @@ FONT_CHOICES = {
     "Font 2": 2,
     "Font 3": 3,
     "Font 4": 4,
-    "Font 5": 5,
+    "Font 5 (NEW)": 5,
     "Font 6": 6,
     "Font 7": 7
 }
 
 BG_CHOICES = {
-    "Background 1": 1,
-    "Background 2": 2,
-    "Background 3": 3,
-    "Background 4": 4,
-    "Background 5": 5,
-    "Background 6": 6,
-    "Background 7": 7
+    "GTA V City": 1,
+    "Dark Fluid Metal": 2,
+    "Dark Synthwave": 3,
+    "Neon Veins": 4,
+    "Nebula Drops": 5,
+    "Galaxy": 6,
+    "Warp Grid": 7
 }
 
-def generate_image(text: str, font_index: int, bg_index: int, overlay_index: int = None, color: str = "#ffffff", colorful: bool = False, output_path: str = "generated/generated_image.png"):
-    # Konfiguration
-    width, height = 1024, 1024  # Quadratisch
+OVERLAY_CHOICES = {
+    "Black": 0,
+    "Colorful Wave": 1,
+    "Particles": 2,
+    "Smoke": 3,
+    "Lightning FX": 4,
+    "Abstract Lines": 5,
+    "Grain": 6
+}
 
-    # Hintergrund vorbereiten
+COLOR_CHOICES = {
+    "Purple": "#8D0AF5",
+    "Red": "#FF0000",
+    "Blue": "#006EFF",
+    "Green": "#00FFB3",
+    "Yellow": "#FFFF00"
+}
+
+def generate_image(text: str, font_index: int, bg_index: int, overlay_index: int = None, color: str = "#8D0AF5", colorful: bool = False, output_path: str = "generated/generated_image.png"):
+    width, height = 1024, 1024
+
     bg_path = os.path.join("assets", "Backgrounds", f"BackGround{bg_index}.png")
     background = Image.open(bg_path).resize((width, height)).convert("RGBA")
 
-    # Schatten vorbereiten
     shadow = Image.open("assets/Shadow.png").resize((width, height)).convert("RGBA")
 
-    # Zielbild
     result_image = Image.new('RGBA', (width, height), (0, 0, 0, 0))
     result_image.paste(background, (0, 0))
     result_image.paste(shadow, (0, 0), shadow)
 
-    # Schriftabstände pro Font
     font_margins = {
-        1: -10,
-        2: -10,
-        3: 10,
-        4: -10,
-        5: -20,
-        6: -10,
-        7: -15,
+        1: -10, 2: -10, 3: 10, 4: -10, 5: -20, 6: -10, 7: -15
     }
     margin = font_margins.get(font_index, 20)
 
-    # Buchstaben vorbereiten mit Zuschnitt & Skalierung
     letter_images = []
     total_width = 0
     fixed_height = int(height * 0.25)
@@ -77,7 +83,6 @@ def generate_image(text: str, font_index: int, bg_index: int, overlay_index: int
         letter_images.append((img, new_width))
         total_width += new_width + margin
 
-    # Automatisch skalieren, wenn zu breit oder zu schmal
     max_width = int(width * 0.85)
     min_width = int(width * 0.6)
     max_scaled_height = int(height * 0.7)
@@ -106,30 +111,25 @@ def generate_image(text: str, font_index: int, bg_index: int, overlay_index: int
             result_image.paste(img, (x, y), img)
         x += w + margin
 
-    # Farbton anpassen
     hue = color2hue(color)
     result_image = change_hue(result_image, hue)
 
     if color in ["#000000", "#ffffff"]:
         result_image = result_image.convert("L").convert("RGBA")
 
-    # Overlays final ganz oben drauflegen
     overlay_path = os.path.join("assets", "walpaperSub", f"{overlay_index}.png")
     if overlay_index is not None and os.path.exists(overlay_path):
         overlay = Image.open(overlay_path).convert("RGBA")
-        overlay = overlay.resize(result_image.size)
-        overlay = overlay.convert(result_image.mode)
+        overlay = overlay.resize(result_image.size).convert(result_image.mode)
         result_image = ImageChops.screen(result_image, overlay)
 
     if colorful:
         colorful_path = "assets/walpaperSub/COLORFUL.png"
         if os.path.exists(colorful_path):
             overlay_colorful = Image.open(colorful_path).convert("RGBA")
-            overlay_colorful = overlay_colorful.resize(result_image.size)
-            overlay_colorful = overlay_colorful.convert(result_image.mode)
+            overlay_colorful = overlay_colorful.resize(result_image.size).convert(result_image.mode)
             result_image = ImageChops.multiply(result_image, overlay_colorful)
 
-    # Speichern
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     result_image.save(output_path)
     return output_path
