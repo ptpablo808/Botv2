@@ -9,6 +9,20 @@ from keep_alive import keep_alive
 import random
 from image_generator import generate_image, FONT_CHOICES, BG_CHOICES, COLOR_CHOICES, OVERLAY_CHOICES
 import traceback
+import functools import wraps
+
+def check_roles(allowed_roles: list[str]):
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(interaction: discord.Interaction, *args, **kwargs):
+            if not any(role.name in allowed_roles for role in interaction.user.roles):
+                await interaction.response.send_message(
+                    "❌ You don't have permission to use this command.", ephemeral=True
+                )
+                return
+            return await func(interaction, *args, **kwargs)
+        return wrapper
+    return decorator
 
 with open("token.txt", "r") as f:
     TOKEN = f.read().strip()
@@ -103,6 +117,43 @@ def increase_and_get_warnings(user_id: int, guild_id: int):
         connection.commit()
         connection.close()
         return new_count
+
+# --- XP Functions ---
+def add_xp_and_get_level(user_id: int, guild_id: int, amount: int = 5):
+    connection = sqlite3.connect(DB_PATH)
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT xp, level FROM users_per_guild
+        WHERE user_id = ? AND guild_id = ?
+    """, (user_id, guild_id))
+    result = cursor.fetchone()
+
+    if result is None:
+        # Neuer Nutzer → initialisieren
+        cursor.execute("""
+            INSERT INTO users_per_guild (user_id, warning_count, guild_id, xp, level)
+            VALUES (?, 0, ?, ?, 1)
+        """, (user_id, guild_id, amount))
+        connection.commit()
+        connection.close()
+        return 1, amount
+
+    xp, level = result
+    xp += amount
+    required_xp = 100 + (level - 1) * 50  # XP-Schwelle steigt pro Level
+
+    if xp >= required_xp:
+        level += 1
+        xp -= required_xp  # Überschüssige XP behalten
+
+    cursor.execute("""
+        UPDATE users_per_guild SET xp = ?, level = ?
+        WHERE user_id = ? AND guild_id = ?
+    """, (xp, level, user_id, guild_id))
+    connection.commit()
+    connection.close()
+    return level, xp
 
 
 # --- Keep bot alive on Render ---
@@ -210,6 +261,11 @@ async def on_message(msg):
             response = random.choice(reaction_responses).format(mention=msg.author.mention)
             await msg.channel.send(response)
             break
+
+    level, xp = add_xp_and_get_level(msg.author.id, msg.guild.id)
+    if xp == 0:  # XP zurückgesetzt heißt: Level-Up!
+        await msg.channel.send(f"🎉 {msg.author.mention} ist jetzt Level {level}!")
+
     await bot.process_commands(msg)
 
 # --- Slash command: greet ---
@@ -228,6 +284,7 @@ async def greet(interaction: discord.Interaction, user: discord.User):
 # --- Slash command: add reaction word ---
 @bot.tree.command(name="addreactionword", description="Adds a new reaction word")
 @app_commands.describe(word="The word that should trigger a reaction")
+@check_roles(["Moderator", "Admin"])
 async def addreactionword(interaction: discord.Interaction, word: str):
     word = word.lower()
     if word in reaction_words:
@@ -236,16 +293,11 @@ async def addreactionword(interaction: discord.Interaction, word: str):
         add_reaction_word(word)
         reaction_words.append(word)
         await interaction.response.send_message(f"`{word}` has been added to the reaction list ✅", ephemeral=True)
-    word = word.lower()
-    if word in reaction_words:
-        await interaction.response.send_message(f"`{word}` is already in the reaction list.", ephemeral=True)
-    else:
-        reaction_words.append(word)
-        await interaction.response.send_message(f"`{word}` has been added to the reaction list ✅", ephemeral=True)
 
 # --- Slash command: add warn word ---
 @bot.tree.command(name="addwarnword", description="Adds a new warn word")
 @app_commands.describe(word="The word that should trigger a warning")
+@check_roles(["Moderator", "Admin"])
 async def addwarnword(interaction: discord.Interaction, word: str):
     word = word.lower()
     if word in warn_words:
@@ -455,6 +507,31 @@ async def on_raw_reaction_remove(payload):
         except Exception as e:
             print(f"Error removing role: {e}")
 
+# --- rank command ---
+@bot.tree.command(name="rank", description="Zeigt deinen aktuellen XP und Level")
+async def rank(interaction: discord.Interaction):
+    user_id = interaction.user.id
+    guild_id = interaction.guild.id
+
+    connection = sqlite3.connect(DB_PATH)
+    cursor = connection.cursor()
+    cursor.execute("""
+        SELECT xp, level FROM users_per_guild
+        WHERE user_id = ? AND guild_id = ?
+    """, (user_id, guild_id))
+    result = cursor.fetchone()
+    connection.close()
+
+    if result is None:
+        await interaction.response.send_message("📭 Du hast noch keine XP gesammelt!", ephemeral=True)
+    else:
+        xp, level = result
+        needed = 100 + (level - 1) * 50
+        await interaction.response.send_message(
+            f"📈 **Level {level}** – XP: `{xp}/{needed}`", ephemeral=True
+        )
+
+
 @bot.tree.command(name="imagegen", description="Generate an image with text and overlays")
 @app_commands.describe(
     text="The text that will appear on the image",
@@ -479,6 +556,9 @@ async def imagegen(
     color: app_commands.Choice[str] = None,
     colorful: bool = False
 ):
+    if len(text) > 12:
+        await interaction.response.send_message("❌ Text too long. Please use max 12 characters.", ephemeral=True)
+        return
     await interaction.response.defer()
 
     hex_color = color.value if color else "#8D0AF5"
