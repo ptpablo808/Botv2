@@ -10,9 +10,8 @@ import random
 from image_generator import generate_image, FONT_CHOICES, BG_CHOICES
 import traceback
 
-# --- Load environment variables ---
-load_dotenv()
-TOKEN = os.getenv("DISCORD_TOKEN")
+with open("token.txt", "r") as f:
+    TOKEN = f.read().strip()
 
 # --- Paths & Database ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -105,10 +104,6 @@ def increase_and_get_warnings(user_id: int, guild_id: int):
         connection.close()
         return new_count
 
-
-# --- Load environment variables ---
-load_dotenv()
-TOKEN = os.getenv("DISCORD_TOKEN")
 
 # --- Keep bot alive on Render ---
 keep_alive()
