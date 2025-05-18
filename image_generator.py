@@ -121,6 +121,7 @@ def generate_image(text: str, font_index: int, bg_index: int, overlay_index: int
     if overlay_index is not None and os.path.exists(overlay_path):
         overlay = Image.open(overlay_path).convert("RGBA")
         overlay = overlay.resize(result_image.size).convert(result_image.mode)
+        overlay = change_hue(overlay, hue)  # <- Overlay einfärben
         result_image = ImageChops.screen(result_image, overlay)
 
     if colorful:
