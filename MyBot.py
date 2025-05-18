@@ -9,7 +9,7 @@ from keep_alive import keep_alive
 import random
 from image_generator import generate_image, FONT_CHOICES, BG_CHOICES, COLOR_CHOICES, OVERLAY_CHOICES
 import traceback
-import functools import wraps
+from functools import wraps
 
 def check_roles(allowed_roles: list[str]):
     def decorator(func):
@@ -174,6 +174,29 @@ def get_guild_settings(guild_id):
     connection.close()
     return row
 
+# --- rank roles ---
+def set_rank_role(guild_id: int, rank_name: str, role_id: int):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT OR REPLACE INTO rank_roles (guild_id, rank_name, role_id)
+        VALUES (?, ?, ?)
+    """, (guild_id, rank_name, role_id))
+    conn.commit()
+    conn.close()
+
+def get_rank_roles(guild_id: int) -> dict:
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT rank_name, role_id FROM rank_roles
+        WHERE guild_id = ?
+    """, (guild_id,))
+    rows = cursor.fetchall()
+    conn.close()
+    return {name: role_id for name, role_id in rows}
+
+
 # --- Sync slash commands on bot ready ---
 @bot.event
 async def on_ready():
@@ -263,10 +286,34 @@ async def on_message(msg):
             break
 
     level, xp = add_xp_and_get_level(msg.author.id, msg.guild.id)
-    if xp == 0:  # XP zurückgesetzt heißt: Level-Up!
+    if xp == 0:
         await msg.channel.send(f"🎉 {msg.author.mention} ist jetzt Level {level}!")
 
+        new_rank = get_rank_title(level)
+        rank_roles = get_rank_roles(msg.guild.id)
+        role_id = rank_roles.get(new_rank)
+
+        if role_id:
+            role = msg.guild.get_role(role_id)
+            if role:
+                old_roles = [msg.guild.get_role(rid) for rid in rank_roles.values()]
+                await msg.author.remove_roles(*filter(None, old_roles))
+                await msg.author.add_roles(role)
+                await msg.channel.send(f"🏅 {msg.author.mention} hat den Rang **{new_rank}** erhalten!")
+
+
     await bot.process_commands(msg)
+
+# --- Slash command: setrankrole ---
+@bot.tree.command(name="setrankrole", description="Verknüpft einen Rang mit einer Discord-Rolle")
+@app_commands.describe(rank="Rangname (z. B. Gold, Diamond, etc.)", role="Discord-Rolle, die zugewiesen werden soll")
+@check_roles(["Moderator", "Admin"])
+async def setrankrole(interaction: discord.Interaction, rank: str, role: discord.Role):
+    set_rank_role(interaction.guild.id, rank.strip(), role.id)
+    await interaction.response.send_message(
+        f"🔗 Rang **{rank}** wurde mit Rolle **{role.name}** verknüpft.",
+        ephemeral=True
+    )
 
 # --- Slash command: greet ---
 @bot.tree.command(name="greet", description="Sends a greeting to the selected user")

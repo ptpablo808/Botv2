@@ -53,7 +53,7 @@ def generate_image(text: str, font_index: int, bg_index: int, overlay_index: int
     result_image.paste(shadow, (0, 0), shadow)
 
     font_margins = {
-        1: -10, 2: -10, 3: 10, 4: -10, 5: -20, 6: -10, 7: -15
+        1: -10, 2: -20, 3: 10, 4: -10, 5: -20, 6: -10, 7: -15
     }
     margin = font_margins.get(font_index, 20)
 
