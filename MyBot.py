@@ -13,51 +13,8 @@ from functools import wraps
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import requests
 from io import BytesIO
-
-RANK_STYLES = {
-    "Gold": {
-        "name_color": "#FFD700",
-        "rank_color": "#FFD700",
-        "bar_start": "#ffcc00",
-        "bar_end": "#ffee00",
-        "xp_color": "#eeeecc"
-    },
-    "Platinum": {
-        "name_color": "#e5e4e2",
-        "rank_color": "#e5e4e2",
-        "bar_start": "#c0c0c0",
-        "bar_end": "#ffffff",
-        "xp_color": "#f0f0f0"
-    },
-    "Diamond": {
-        "name_color": "#b9f2ff",
-        "rank_color": "#b9f2ff",
-        "bar_start": "#00e5ff",
-        "bar_end": "#8be9fd",
-        "xp_color": "#cceeff"
-    },
-    "Ruby": {
-        "name_color": "#e0115f",
-        "rank_color": "#e0115f",
-        "bar_start": "#ff3f80",
-        "bar_end": "#ff6f91",
-        "xp_color": "#ffc1cc"
-    },
-    "Sapphire": {
-        "name_color": "#0f52ba",
-        "rank_color": "#0f52ba",
-        "bar_start": "#1e90ff",
-        "bar_end": "#87cefa",
-        "xp_color": "#cceeff"
-    },
-    "Krypton": {
-        "name_color": "#00ffd5",
-        "rank_color": "#aaffaa",
-        "bar_start": "#00d2ff",
-        "bar_end": "#3aff00",
-        "xp_color": "#dddddd"
-    }
-}
+from rankcard_generator import generate_rankcard_image
+from leaderboard_generator import generate_leaderboard_image
 
 
 def check_roles(allowed_roles: list[str]):
@@ -656,11 +613,13 @@ async def rank(interaction: discord.Interaction):
 
 # --- rankcard command ---
 
-@bot.tree.command(name="rankcard", description="Show Rankcard")
-async def rankcard(interaction: discord.Interaction):
+@bot.tree.command(name="rankcard", description="Zeigt die Rankcard eines Nutzers")
+@app_commands.describe(user="Der Nutzer, dessen Rankcard du sehen willst (optional)")
+async def rankcard(interaction: discord.Interaction, user: discord.User = None):
     await interaction.response.defer()
 
-    user_id = interaction.user.id
+    member = user or interaction.user
+    user_id = member.id
     guild_id = interaction.guild.id
 
     connection = sqlite3.connect(DB_PATH)
@@ -681,109 +640,31 @@ async def rankcard(interaction: discord.Interaction):
     connection.close()
 
     if result is None:
-        await interaction.followup.send("\U0001f4ed You haven't earned any XP yet!", ephemeral=True)
+        await interaction.followup.send("📭 Dieser Nutzer hat noch keine XP!", ephemeral=True)
         return
 
     xp, level = result
-    needed = 100 + (level - 1) * 50
-    rank = get_rank_title(level).replace("🟡 ", "").replace("🔷 ", "").replace("🧪 ", "").replace("⚫ ", "").replace("🔴 ", "").replace("🔵 ", "").replace("⚪ ", "").replace("🟫 ", "")
-
-    style = RANK_STYLES.get(rank, {
-        "name_color": "#ffffff",
-        "rank_color": "#cccccc",
-        "bar_start": "#888888",
-        "bar_end": "#aaaaaa",
-        "xp_color": "#bbbbbb"
-    })
-
-    width, height = 900, 260
-    card = Image.new("RGBA", (width, height))
-
-    bg_path = f"assets/rank_backgrounds/{rank}.png"
-    if os.path.exists(bg_path):
-        bg = Image.open(bg_path).resize((width, height)).convert("RGBA")
-        card.paste(bg, (0, 0))
-    else:
-        card.paste((30, 40, 50), [0, 0, width, height])
-
-    draw = ImageDraw.Draw(card)
-
-    font_big = ImageFont.truetype("assets/fonts/Manrope-Bold.ttf", 40)
-    font_small = ImageFont.truetype("assets/fonts/Manrope-Medium.ttf", 22)
-
-    avatar_url = interaction.user.display_avatar.url
+    avatar_url = member.display_avatar.url
     response = requests.get(avatar_url)
-    avatar = Image.open(BytesIO(response.content)).convert("RGBA").resize((160, 160))
-    mask = Image.new("L", (160, 160), 0)
-    mask_draw = ImageDraw.Draw(mask)
-    mask_draw.ellipse((0, 0, 160, 160), fill=255)
-    avatar.putalpha(mask)
-    card.paste(avatar, (40, 50), avatar)
+    avatar_bytes = response.content
 
-    # Username
-    name_text = f"{interaction.user.name}#{interaction.user.discriminator}"
-    name_pos = (230, 40)
-    draw.text(name_pos, name_text, font=font_big, fill=style["name_color"])
+    rank = get_rank_title(level)
+    stripped_rank = rank.replace("🟡 ", "").replace("🔷 ", "").replace("🧪 ", "").replace("⚫ ", "").replace("🔴 ", "").replace("🔵 ", "").replace("⚪ ", "").replace("🟫 ", "")
 
-    # Server Rank Badge
-    position_text = f"#{position}"
-    badge_padding_x = 10
-    badge_padding_y = 5
-
-    bbox = font_small.getbbox(position_text)
-    text_w = bbox[2] - bbox[0]
-    text_h = bbox[3] - bbox[1]
-
-    badge_w = text_w + badge_padding_x * 2
-    badge_h = text_h + badge_padding_y * 2
-    badge_x = name_pos[0] + font_big.getlength(name_text) + 12
-    badge_y = name_pos[1] + 0  # slightly above center
-
-    draw.rounded_rectangle(
-        [(badge_x, badge_y), (badge_x + badge_w, badge_y + badge_h)],
-        radius=badge_h // 2,
-        fill=(0, 0, 0, 80),
-        outline=(255, 255, 255, 80),
-        width=1
+    card = generate_rankcard_image(
+        username=member.display_name,
+        discriminator=member.discriminator,
+        avatar_bytes=avatar_bytes,
+        xp=xp,
+        level=level,
+        position=position,
+        rank=stripped_rank
     )
 
-    text_x = badge_x + badge_padding_x
-    text_y = badge_y + badge_padding_y - 1
-    draw.text((text_x, text_y), position_text, font=font_small, fill="#ffffff")
-
-    draw.text((230, 90), f"Level: {level}", font=font_small, fill="#ffffff")
-    draw.text((230, 120), f"Rank: {rank}", font=font_small, fill=style["rank_color"])
-
-    bar_x, bar_y, bar_w, bar_h = 230, 190, 600, 25
-    bar_radius = 12
-    bar_bg_layer = Image.new("RGBA", (bar_w, bar_h), (0, 0, 0, 100))
-    bar_mask = Image.new("L", (bar_w, bar_h), 0)
-    bar_draw_mask = ImageDraw.Draw(bar_mask)
-    bar_draw_mask.rounded_rectangle([(0, 0), (bar_w, bar_h)], radius=bar_radius, fill=255)
-    bar_bg_layer.putalpha(bar_mask)
-    card.paste(bar_bg_layer, (bar_x, bar_y), bar_bg_layer)
-
-    fill_ratio = min(xp / needed, 1.0)
-    fill_w = int(bar_w * fill_ratio)
-    for i in range(fill_w):
-        blend = i / bar_w
-        r = int(int(style["bar_start"][1:3], 16) * (1 - blend) + int(style["bar_end"][1:3], 16) * blend)
-        g = int(int(style["bar_start"][3:5], 16) * (1 - blend) + int(style["bar_end"][3:5], 16) * blend)
-        b = int(int(style["bar_start"][5:7], 16) * (1 - blend) + int(style["bar_end"][5:7], 16) * blend)
-        draw.line([(bar_x + i, bar_y), (bar_x + i, bar_y + bar_h - 1)], fill=(r, g, b))
-
-    draw.text((bar_x, bar_y - 38), f"XP: {xp} / {needed}", font=font_small, fill=style["xp_color"])
-
-    border = Image.new("RGBA", (width, height))
-    border_draw = ImageDraw.Draw(border)
-    border_draw.rounded_rectangle([(0, 0), (width - 1, height - 1)], radius=18, outline=(255, 255, 255, 40), width=1)
-    card = Image.alpha_composite(card, border)
-
-    path = f"rankcard_{interaction.user.id}.png"
+    path = f"rankcard_{member.id}.png"
     card.save(path)
     await interaction.followup.send(file=discord.File(path))
     os.remove(path)
-
 
 
 # --- givexp ---
@@ -812,7 +693,7 @@ async def givexp(interaction: discord.Interaction, user: discord.Member, amount:
 # --- set user rank command ---
 
 @bot.tree.command(name="setuserrank", description="Set user rank incl. Level & XP")
-@app_commands.describe(user="User")
+@app_commands.describe(user="User", xp="XP-Amount(Standard: 0)")
 @app_commands.choices(rank=[
     app_commands.Choice(name="🟫 Newbie", value="🟫 Newbie"),
     app_commands.Choice(name="⚫ Carbon", value="⚫ Carbon"),
@@ -824,7 +705,7 @@ async def givexp(interaction: discord.Interaction, user: discord.Member, amount:
     app_commands.Choice(name="🧪 Krypton", value="🧪 Krypton")
 ])
 @check_roles(["Admin", "Moderator"])
-async def setuserrank(interaction: discord.Interaction, user: discord.Member, rank: app_commands.Choice[str]):
+async def setuserrank(interaction: discord.Interaction, user: discord.Member, rank: app_commands.Choice[str], xp: int = 0):
     rank_levels = {
         "🟫 Newbie": 1,
         "⚫ Carbon": 5,
@@ -846,6 +727,7 @@ async def setuserrank(interaction: discord.Interaction, user: discord.Member, ra
         VALUES (?, ?, 0, ?, ?)
         ON CONFLICT(user_id, guild_id) DO UPDATE SET xp=?, level=?
     """, (user.id, interaction.guild.id, xp, level, xp, level))
+
     conn.commit()
     conn.close()
 
@@ -858,8 +740,61 @@ async def setuserrank(interaction: discord.Interaction, user: discord.Member, ra
         await user.remove_roles(*filter(None, old_roles))
         await user.add_roles(role)
 
-    await interaction.response.send_message(f"✅ {user.mention} wurde auf Rang **{rank_name}** gesetzt.", ephemeral=True)
+    await interaction.response.send_message(f"✅ {user.mention} wurde auf Rang **{rank_name}** mit **{xp} XP** gesetzt.", ephemeral=True)
 
+# --- command leaderboard ---
+@bot.tree.command(name="leaderboard", description="Zeigt die Top 10 nach Level & XP")
+async def leaderboard(interaction: discord.Interaction):
+    await interaction.response.defer()
+    guild_id = interaction.guild.id
+
+    # --- DB-Abfrage ---
+    connection = sqlite3.connect(DB_PATH)
+    cursor = connection.cursor()
+    cursor.execute("""
+        SELECT user_id, xp, level FROM users_per_guild
+        WHERE guild_id = ?
+        ORDER BY level DESC, xp DESC
+        LIMIT 10
+    """, (guild_id,))
+    top_users_raw = cursor.fetchall()
+    connection.close()
+
+    top_users = []
+    for position, (user_id, xp, level) in enumerate(top_users_raw, start=1):
+        member = interaction.guild.get_member(user_id) or await bot.fetch_user(user_id)
+
+        # Avatar laden
+        try:
+            avatar_url = member.display_avatar.url
+            avatar_bytes = requests.get(avatar_url).content
+        except Exception as e:
+            avatar_bytes = None
+            print(f"[WARN] Avatar konnte nicht geladen werden für {user_id}: {e}")
+
+        rank = get_rank_title(level)
+        stripped_rank = rank.replace("🟡 ", "").replace("🔷 ", "").replace("🧪 ", "").replace("⚫ ", "").replace("🔴 ", "").replace("🔵 ", "").replace("⚪ ", "").replace("🟫 ", "")
+
+        top_users.append({
+            "username": member.display_name,
+            "discriminator": member.discriminator,
+            "level": level,
+            "xp": xp,
+            "rank": stripped_rank,
+            "position": position,
+            "avatar_bytes": avatar_bytes
+        })
+
+    if not top_users:
+        await interaction.followup.send("📭 Keine Daten für das Leaderboard vorhanden.", ephemeral=True)
+        return
+
+    # --- Bild generieren und senden ---
+    image = generate_leaderboard_image(top_users)
+    path = f"leaderboard_{interaction.id}.png"
+    image.save(path)
+    await interaction.followup.send(file=discord.File(path))
+    os.remove(path)
 
 # --- command imagegen ---
 
